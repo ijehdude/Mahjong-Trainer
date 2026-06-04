@@ -1,9 +1,14 @@
 # Singapore Mahjong Strategy Trainer
 
 A web-based trainer that teaches Singapore Mahjong through real-time, AI-powered
-coaching. You play the South seat against three bots; every time you pre-select a
+coaching. You play against bots from a **randomly assigned seat** each game (East,
+South, West, or North — you may even be the dealer); every time you pre-select a
 tile to discard, a Claude-powered strategy coach streams a verdict and explanation
 **before** you commit — the learning moment.
+
+Tiles are drawn as crisp SVG faces (traditional dot patterns for Circles,
+segmented bamboo with the 1-bamboo bird, numeral + 萬 Characters, and proper
+honor/flower/season faces) — no images, so they stay sharp at any size.
 
 Built with Next.js (App Router) + TypeScript + Tailwind CSS v4. AI feedback runs
 through a server-side route so the API key is never exposed to the client.

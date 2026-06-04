@@ -105,6 +105,8 @@ export interface DrawResult {
 export interface GameState {
   rules: GameRules;
   players: Player[];
+  /** Index of the human player (seat is randomised at the start of each game). */
+  humanIndex: number;
   wall: TileId[];
   deadWallFlowers: TileId[]; // replacement draws
   roundWind: Wind;

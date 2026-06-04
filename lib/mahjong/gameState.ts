@@ -18,23 +18,27 @@ import { isBonus, isSuit, rankOf, suitOf } from "./tiles";
 /* ===========================================================================
    Core game engine. Pure transition functions driven by the React component.
 
-   Seating (turn order is clockwise by index): index 0 = East (dealer, bot),
-   index 1 = South (YOU), index 2 = West, index 3 = North. Play proceeds
-   0 -> 1 -> 2 -> 3 -> 0.
+   Seating (turn order is clockwise by index): seat 0 = East (always the
+   dealer), seat 1 = South, seat 2 = West, seat 3 = North. Play proceeds
+   0 -> 1 -> 2 -> 3 -> 0. The human's seat is randomised each game (see
+   createGame -> humanIndex), so they may be any wind — including the dealer.
    =========================================================================== */
 
 const SEAT_WINDS: Wind[] = ["east", "south", "west", "north"];
-const HUMAN_INDEX = 1; // South
 
 export function createGame(rules: GameRules): GameState {
   const n = rules.players;
   const deck = shuffle(buildDeck(rules.flowerTiles));
   const dealt = deal(deck, n);
 
+  // Randomise which seat the human takes. Dealer is always seat 0 (East), so
+  // the human may even be the dealer.
+  const humanIndex = Math.floor(Math.random() * n);
+
   let botCounter = 0;
   const players: Player[] = [];
   for (let i = 0; i < n; i++) {
-    const isHuman = i === HUMAN_INDEX;
+    const isHuman = i === humanIndex;
     const seatWind = SEAT_WINDS[i];
     players.push({
       index: i,
@@ -53,6 +57,7 @@ export function createGame(rules: GameRules): GameState {
   return {
     rules,
     players,
+    humanIndex,
     wall: dealt.wall,
     deadWallFlowers: [],
     roundWind: "east",
@@ -68,7 +73,9 @@ export function createGame(rules: GameRules): GameState {
     correctDiscards: 0,
     totalDiscards: 0,
     pnl: 0,
-    log: [`Hand ${1} — East round. Dealer is ${players[0].name} (East).`],
+    log: [
+      `Hand 1 — East round. You are ${SEAT_WINDS[humanIndex]}. Dealer is ${players[0].name} (East).`,
+    ],
   };
 }
 
@@ -79,7 +86,7 @@ export function relativeSeat(
   index: number
 ): RelativeSeat {
   const n = state.players.length;
-  const diff = (index - HUMAN_INDEX + n) % n;
+  const diff = (index - state.humanIndex + n) % n;
   if (diff === 0) return "self";
   if (diff === 1) return "right"; // downstream (plays after you)
   if (diff === n - 1) return "left"; // upstream (plays before you)
@@ -95,8 +102,8 @@ export function indexForSeat(
   return null;
 }
 
-export function humanIndex(): number {
-  return HUMAN_INDEX;
+export function humanIndex(state: GameState): number {
+  return state.humanIndex;
 }
 
 /* ---- Drawing -------------------------------------------------------------- */
@@ -240,7 +247,7 @@ function doBotDiscardFor(state: GameState, index: number): GameState {
 /** Apply the human's discard (called from the component). */
 export function humanDiscard(state: GameState, tile: TileId): GameState {
   const players = state.players.map((p) => ({ ...p }));
-  const me = players[HUMAN_INDEX];
+  const me = players[state.humanIndex];
   const idx = me.hand.indexOf(tile);
   if (idx === -1) return state;
   me.hand = [...me.hand.slice(0, idx), ...me.hand.slice(idx + 1)];
@@ -248,7 +255,7 @@ export function humanDiscard(state: GameState, tile: TileId): GameState {
   return {
     ...state,
     players,
-    lastDiscard: { playerIndex: HUMAN_INDEX, tile },
+    lastDiscard: { playerIndex: state.humanIndex, tile },
     phase: "await-claims",
     canSelfDrawWin: false,
     drawnTile: null,
@@ -283,22 +290,22 @@ function resolveClaims(
   const n = state.players.length;
   const discarder = ld.playerIndex;
   const tile = ld.tile;
-  const human = state.players[HUMAN_INDEX];
+  const human = state.players[state.humanIndex];
 
   // ---- Priority 1: Ron --------------------------------------------------
   // Human ron — offer it.
   if (
     !skipHumanWin &&
-    discarder !== HUMAN_INDEX &&
+    discarder !== state.humanIndex &&
     human &&
-    meetsMinTai(state, HUMAN_INDEX, discarder)
+    meetsMinTai(state, state.humanIndex, discarder)
   ) {
     return offerHumanClaim(state, tile, discarder, true);
   }
   // Bot ron (first around the table from discarder).
   for (let step = 1; step < n; step++) {
     const i = (discarder + step) % n;
-    if (i === HUMAN_INDEX) continue;
+    if (i === state.humanIndex) continue;
     if (meetsMinTai(state, i, discarder)) {
       return computeWin(state, i, discarder);
     }
@@ -306,16 +313,16 @@ function resolveClaims(
 
   // ---- Priority 2: Pong / Kong -----------------------------------------
   const humanCanPong =
-    discarder !== HUMAN_INDEX && canPong(human.hand, tile);
+    discarder !== state.humanIndex && canPong(human.hand, tile);
   const humanCanKong =
-    discarder !== HUMAN_INDEX && canKong(human.hand, tile);
+    discarder !== state.humanIndex && canKong(human.hand, tile);
   if (!skipHumanClaim && (humanCanPong || humanCanKong)) {
     return offerHumanClaim(state, tile, discarder, false);
   }
   // Bots pong/kong.
   for (let step = 1; step < n; step++) {
     const i = (discarder + step) % n;
-    if (i === HUMAN_INDEX) continue;
+    if (i === state.humanIndex) continue;
     const bot = state.players[i];
     if (botWantsKong(bot.hand, tile)) {
       return applyMeld(state, i, "kong", tile, discarder);
@@ -329,7 +336,7 @@ function resolveClaims(
   const downstream = (discarder + 1) % n;
   if (
     !skipHumanClaim &&
-    downstream === HUMAN_INDEX &&
+    downstream === state.humanIndex &&
     chiOptions(human.hand, tile).length > 0
   ) {
     return offerHumanClaim(state, tile, discarder, false);
@@ -346,7 +353,7 @@ function offerHumanClaim(
   discarder: number,
   ronAvailable: boolean
 ): GameState {
-  const human = state.players[HUMAN_INDEX];
+  const human = state.players[state.humanIndex];
   const downstream = (discarder + 1) % state.players.length;
   return {
     ...state,
@@ -355,10 +362,10 @@ function offerHumanClaim(
       discardTile: tile,
       discarderIndex: discarder,
       canWin: ronAvailable,
-      canPong: discarder !== HUMAN_INDEX && canPong(human.hand, tile),
-      canKong: discarder !== HUMAN_INDEX && canKong(human.hand, tile),
+      canPong: discarder !== state.humanIndex && canPong(human.hand, tile),
+      canKong: discarder !== state.humanIndex && canKong(human.hand, tile),
       chiOptions:
-        downstream === HUMAN_INDEX ? chiOptions(human.hand, tile) : [],
+        downstream === state.humanIndex ? chiOptions(human.hand, tile) : [],
     },
   };
 }
@@ -376,7 +383,7 @@ export function humanClaim(
 ): GameState {
   const ld = state.lastDiscard;
   if (!ld) return state;
-  return applyMeld(state, HUMAN_INDEX, type, ld.tile, ld.playerIndex, chiTiles);
+  return applyMeld(state, state.humanIndex, type, ld.tile, ld.playerIndex, chiTiles);
 }
 
 /** Form a meld from the claimed discard. The claimer then discards. */
@@ -512,10 +519,10 @@ export function meetsMinTai(
 /** Human declares a win (self-draw on their turn, or ron on a discard). */
 export function humanDeclareWin(state: GameState): GameState {
   if (state.phase === "player-choose" && state.canSelfDrawWin) {
-    return computeWin(state, HUMAN_INDEX, null);
+    return computeWin(state, state.humanIndex, null);
   }
   if (state.phase === "player-claim" && state.claim?.canWin) {
-    return computeWin(state, HUMAN_INDEX, state.claim.discarderIndex);
+    return computeWin(state, state.humanIndex, state.claim.discarderIndex);
   }
   return state;
 }
@@ -595,7 +602,7 @@ function computeWin(
     handMelds: winner.melds,
   };
 
-  const humanDelta = payments[HUMAN_INDEX] ?? 0;
+  const humanDelta = payments[state.humanIndex] ?? 0;
   return {
     ...state,
     players,
