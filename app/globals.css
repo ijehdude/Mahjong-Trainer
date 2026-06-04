@@ -1,26 +1,161 @@
 @import "tailwindcss";
 
+/* ===========================================================================
+   Singapore Mahjong Strategy Trainer — Design System
+   Rich, traditional East Asian gaming aesthetic.
+   =========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-felt: #1a4a2e; /* Deep jade felt green */
+  --bg-dark: #0f1e17; /* Near-black dark background */
+  --bg-surface: #1f3528; /* Card / panel surface */
+  --bg-tile: #f5f0e8; /* Warm ivory tile face */
+  --bg-tile-back: #2a5c8f; /* Blue tile back */
+  --accent-gold: #c9a84c; /* Gold accents, highlights */
+  --accent-red: #c0392b; /* Red suit tiles */
+  --text-primary: #f0ead8; /* Warm off-white text */
+  --text-muted: #8aab95; /* Muted green-grey text */
+  --feedback-correct: #27ae60; /* Correct move green */
+  --feedback-wrong: #e74c3c; /* Wrong move red */
+  --feedback-neutral: #c9a84c; /* Neutral advice gold */
 }
 
+/* Expose palette + fonts to Tailwind utility classes (bg-felt, text-gold, etc.) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-felt: var(--bg-felt);
+  --color-dark: var(--bg-dark);
+  --color-surface: var(--bg-surface);
+  --color-tile: var(--bg-tile);
+  --color-tile-back: var(--bg-tile-back);
+  --color-gold: var(--accent-gold);
+  --color-suit-red: var(--accent-red);
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-correct: var(--feedback-correct);
+  --color-wrong: var(--feedback-wrong);
+  --color-neutral: var(--feedback-neutral);
+
+  --font-display: var(--font-noto-serif-sc), serif;
+  --font-body: var(--font-dm-sans), system-ui, sans-serif;
+  --font-tile: var(--font-noto-sans-sc), sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Faint diagonal tile-pattern texture (CSS only) used on dark backdrops */
+.tile-texture {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(201, 168, 76, 0.04) 0px,
+    rgba(201, 168, 76, 0.04) 1px,
+    transparent 1px,
+    transparent 14px
+  ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(201, 168, 76, 0.03) 0px,
+      rgba(201, 168, 76, 0.03) 1px,
+      transparent 1px,
+      transparent 14px
+    );
+}
+
+/* Radial felt glow for the table center */
+.felt-glow {
+  background:
+    radial-gradient(
+      ellipse 120% 80% at 50% 40%,
+      rgba(46, 110, 70, 0.55) 0%,
+      var(--bg-felt) 55%,
+      #143d25 100%
+    );
+}
+
+/* ---- Motion ---------------------------------------------------------------*/
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-up {
+  animation: slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.22s ease-out;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.12) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Custom scrollbars to keep the premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
