@@ -21,6 +21,7 @@ import {
   streamStrategyFeedback,
   type Verdict,
 } from "@/lib/claude/strategyFeedback";
+import { evaluateDiscardLocal } from "@/lib/mahjong/localStrategy";
 import { tileName } from "@/lib/mahjong/tiles";
 import ScoreHeader from "@/components/game/ScoreHeader";
 import GameTable from "@/components/game/GameTable";
@@ -89,11 +90,19 @@ export default function GamePage() {
     return () => clearTimeout(id);
   }, [state]);
 
-  // ---- Strategy feedback streaming on pre-select ------------------------
+  // ---- Strategy feedback on pre-select (local = instant, AI = streamed) --
   useEffect(() => {
     if (!state || state.phase !== "player-choose" || !selected) {
       return;
     }
+
+    // Offline heuristic coach — synchronous, no network.
+    if (rules.coachEngine === "local") {
+      const fb = evaluateDiscardLocal(state, selected);
+      setFeedback({ loading: false, verdict: fb.verdict, text: fb.text });
+      return;
+    }
+
     const controller = new AbortController();
     abortRef.current?.abort();
     abortRef.current = controller;

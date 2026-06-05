@@ -9,7 +9,13 @@ import Button from "@/components/shared/Button";
 import TileComponent from "@/components/game/TileComponent";
 import StrategyGuide from "@/components/game/StrategyGuide";
 import { DEFAULT_RULES } from "@/types/game";
-import type { FeiPayout, GameRules, MinTai, PlayerCount } from "@/types/game";
+import type {
+  CoachEngine,
+  FeiPayout,
+  GameRules,
+  MinTai,
+  PlayerCount,
+} from "@/types/game";
 import { RULES_STORAGE_KEY } from "@/lib/storage";
 
 export default function SetupPage() {
@@ -207,6 +213,20 @@ export default function SetupPage() {
                 onChange={(v) => update("limitHandCap", v)}
               />
             </div>
+          </SettingsCard>
+
+          <SettingsCard
+            title="Strategy Coach"
+            helper="Local runs fully offline (no API key needed). AI uses Claude for richer, table-aware advice."
+          >
+            <SegmentedControl<CoachEngine>
+              options={[
+                { label: "Local (offline)", value: "local" },
+                { label: "AI (Claude)", value: "ai" },
+              ]}
+              value={rules.coachEngine}
+              onChange={(v) => update("coachEngine", v)}
+            />
           </SettingsCard>
 
           <SettingsCard

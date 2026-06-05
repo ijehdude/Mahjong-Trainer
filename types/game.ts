@@ -8,6 +8,7 @@ export type PlayerCount = 2 | 3 | 4;
 export type FeiPayout = "none" | "1tai" | "2tai";
 export type MinTai = 1 | 2 | 3 | 4;
 export type FeedbackDetail = "brief" | "detailed";
+export type CoachEngine = "local" | "ai";
 
 export interface GameRules {
   players: PlayerCount;
@@ -22,6 +23,7 @@ export interface GameRules {
   chickenHand: boolean;
   limitHandCap: boolean; // cap payout at 8 tai
   feedbackDetail: FeedbackDetail;
+  coachEngine: CoachEngine; // "local" = offline heuristic, "ai" = Claude API
 }
 
 export const DEFAULT_RULES: GameRules = {
@@ -37,6 +39,7 @@ export const DEFAULT_RULES: GameRules = {
   chickenHand: false,
   limitHandCap: true,
   feedbackDetail: "brief",
+  coachEngine: "local",
 };
 
 /** A declared meld (chi/pong/kong) shown face-up. */
