@@ -44,12 +44,12 @@ export default function PlayerHand({
 
   return (
     <div className="w-full">
-      <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-        <span className="text-[var(--accent-gold)]">Your Hand</span>
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-wider text-[var(--text-muted)]">
+        <span className="text-[var(--accent-gold)]">我的手牌 Your Hand</span>
         <span>·</span>
         <span>{seatLabel}</span>
         <span>·</span>
-        <span>${bet} bet</span>
+        <span>${bet}/台</span>
       </div>
 
       {melds.length > 0 && (

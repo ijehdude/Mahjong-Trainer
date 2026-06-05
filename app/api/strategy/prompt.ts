@@ -25,7 +25,7 @@ export interface StrategyRequest {
   seatWind: string;
   wallRemaining: number;
   feedbackDetail: "brief" | "detailed";
-  rules: Pick<GameRules, "minTai" | "flowerTiles" | "chickenHand">;
+  rules: Pick<GameRules, "minTai" | "flowerTiles">;
 }
 
 export const SYSTEM_PROMPT = `You are a Singapore Mahjong strategy coach. Analyze the player's hand and proposed discard.
@@ -60,7 +60,7 @@ export function buildUserPrompt(req: StrategyRequest): string {
   lines.push(
     `Rules: minimum ${req.rules.minTai} tai to win; flower tiles ${
       req.rules.flowerTiles ? "ON" : "OFF"
-    }; chicken hand ${req.rules.chickenHand ? "allowed" : "not allowed"}.`
+    }.`
   );
   lines.push("");
   lines.push(`PLAYER HAND (${req.playerHand.length} tiles): ${names(req.playerHand)}`);

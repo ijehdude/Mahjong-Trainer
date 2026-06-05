@@ -79,7 +79,7 @@ export default function GameTable({ state }: Props) {
       {/* Dealer pill */}
       <div className="flex justify-center">
         <span className="rounded-full border border-[rgba(201,168,76,0.4)] bg-[rgba(0,0,0,0.25)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
-          Dealer — {WIND_NAME[dealer.seatWind]} ({dealer.name})
+          庄家 Dealer — {WIND_NAME[dealer.seatWind]} ({dealer.name})
         </span>
       </div>
 
@@ -96,13 +96,13 @@ export default function GameTable({ state }: Props) {
         <div className="flex flex-col items-center justify-center gap-1 self-center rounded-2xl border border-[rgba(201,168,76,0.25)] bg-[rgba(0,0,0,0.25)] px-4 py-3">
           <TileComponent tileId={state.roundWind} size="discard" />
           <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-            {WIND_NAME[state.roundWind]} round
+            {WIND_NAME[state.roundWind]} 圈
           </span>
           <span className="text-base font-bold text-[var(--accent-gold)]">
             {state.wall.length}
           </span>
           <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)]">
-            wall
+            牌墙 wall
           </span>
         </div>
 
@@ -115,7 +115,7 @@ export default function GameTable({ state }: Props) {
       <div className="mt-auto flex justify-center pt-3">
         {self && (
           <DiscardPool
-            label={`${WIND_NAME[self.player.seatWind].toUpperCase()} · YOU`}
+            label={`${WIND_NAME[self.player.seatWind].toUpperCase()} · 我`}
             tiles={self.player.discards}
             isDealer={self.isDealer}
             isCurrent={self.isCurrent}

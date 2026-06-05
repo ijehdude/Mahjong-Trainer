@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { ChiOption } from "@/types/game";
+import type { ChiOption, KongOption } from "@/types/game";
 import type { TileId } from "@/types/tiles";
 import TileComponent from "./TileComponent";
 
 /* ===========================================================================
    Action button row shown when a tile is pre-selected or a claim is offered.
+   Labels are bilingual (中文 · EN).
    =========================================================================== */
 
 interface Props {
@@ -16,11 +17,13 @@ interface Props {
   canPong?: boolean;
   canKong?: boolean;
   chiOptions?: ChiOption[];
+  selfKongOptions?: KongOption[]; // concealed / added kongs on your own turn
   discardTile?: TileId; // tile being claimed (for chi preview)
   onDiscard?: () => void;
   onWin?: () => void;
   onPong?: () => void;
   onKong?: () => void;
+  onSelfKong?: (opt: KongOption) => void;
   onChi?: (opt: ChiOption) => void;
   onPass?: () => void;
 }
@@ -32,11 +35,13 @@ export default function ActionButtons({
   canPong,
   canKong,
   chiOptions = [],
+  selfKongOptions = [],
   discardTile,
   onDiscard,
   onWin,
   onPong,
   onKong,
+  onSelfKong,
   onChi,
   onPass,
 }: Props) {
@@ -46,17 +51,30 @@ export default function ActionButtons({
     <div className="relative flex flex-wrap items-center gap-2">
       {mode === "discard" && (
         <ActionBtn
-          label="DISCARD"
+          label="打出"
+          sub="DISCARD"
           onClick={onDiscard}
           disabled={!canDiscard}
           tone="primary"
         />
       )}
 
+      {mode === "discard" &&
+        selfKongOptions.map((opt, i) => (
+          <ActionBtn
+            key={i}
+            label="杠"
+            sub={opt.type === "concealed" ? "KONG (暗)" : "KONG (加)"}
+            onClick={() => onSelfKong?.(opt)}
+            tone="default"
+          />
+        ))}
+
       {chiOptions.length > 0 && (
         <div className="relative">
           <ActionBtn
-            label={`CHI ▾`}
+            label="吃"
+            sub="CHI ▾"
             onClick={() => setChiOpen((o) => !o)}
             tone="default"
           />
@@ -71,7 +89,9 @@ export default function ActionButtons({
                   }}
                   className="flex items-center gap-1 rounded-lg p-1.5 hover:bg-[rgba(255,255,255,0.06)]"
                 >
-                  {discardTile && <TileComponent tileId={discardTile} size="mini" />}
+                  {discardTile && (
+                    <TileComponent tileId={discardTile} size="mini" />
+                  )}
                   {opt.tiles.map((t) => (
                     <TileComponent key={t} tileId={t} size="mini" />
                   ))}
@@ -82,12 +102,16 @@ export default function ActionButtons({
         </div>
       )}
 
-      {canPong && <ActionBtn label="PONG" onClick={onPong} tone="default" />}
-      {canKong && <ActionBtn label="KONG" onClick={onKong} tone="default" />}
-      {canWin && <ActionBtn label="WIN!" onClick={onWin} tone="win" />}
+      {canPong && (
+        <ActionBtn label="碰" sub="PONG" onClick={onPong} tone="default" />
+      )}
+      {canKong && (
+        <ActionBtn label="杠" sub="KONG" onClick={onKong} tone="default" />
+      )}
+      {canWin && <ActionBtn label="胡!" sub="WIN" onClick={onWin} tone="win" />}
 
       {mode === "claim" && (
-        <ActionBtn label="PASS" onClick={onPass} tone="muted" />
+        <ActionBtn label="过" sub="PASS" onClick={onPass} tone="muted" />
       )}
     </div>
   );
@@ -95,11 +119,13 @@ export default function ActionButtons({
 
 function ActionBtn({
   label,
+  sub,
   onClick,
   disabled,
   tone,
 }: {
   label: string;
+  sub: string;
   onClick?: () => void;
   disabled?: boolean;
   tone: "primary" | "default" | "win" | "muted";
@@ -117,9 +143,12 @@ function ActionBtn({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-xl px-4 py-2.5 text-sm font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${TONE[tone]}`}
+      className={`flex flex-col items-center rounded-xl px-4 py-2 leading-tight transition-all active:scale-95 disabled:pointer-events-none disabled:opacity-40 ${TONE[tone]}`}
     >
-      {label}
+      <span className="text-sm font-bold">{label}</span>
+      <span className="text-[8px] font-semibold uppercase tracking-wider opacity-80">
+        {sub}
+      </span>
     </button>
   );
 }

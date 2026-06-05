@@ -20,11 +20,14 @@ export interface GameRules {
   kongBonus: boolean;
   heavenlyHand: boolean;
   earthlyHand: boolean;
-  chickenHand: boolean;
-  limitHandCap: boolean; // cap payout at 8 tai
+  robbingKong: boolean; // 抢杠胡 — win on a tile used to form an added kong
+  limitHandCap: boolean; // cap payout at LIMIT_TAI (5)
   feedbackDetail: FeedbackDetail;
   coachEngine: CoachEngine; // "local" = offline heuristic, "ai" = Claude API
 }
+
+/** Tai at which a capped (limit) hand pays out. */
+export const LIMIT_TAI = 5;
 
 export const DEFAULT_RULES: GameRules = {
   players: 4,
@@ -36,7 +39,7 @@ export const DEFAULT_RULES: GameRules = {
   kongBonus: true,
   heavenlyHand: false,
   earthlyHand: false,
-  chickenHand: false,
+  robbingKong: true,
   limitHandCap: true,
   feedbackDetail: "brief",
   coachEngine: "local",
@@ -86,19 +89,27 @@ export interface ClaimOptions {
   canPong: boolean;
   canKong: boolean;
   chiOptions: ChiOption[];
+  robKong?: boolean; // this "win" claim is a chance to rob an added kong
 }
 
 export interface WinResult {
   winnerIndex: number;
   winningTile: TileId | null; // null if special
   selfDraw: boolean;
+  robKong: boolean; // won by robbing an added kong (抢杠)
   tai: number;
   taiBreakdown: { label: string; tai: number }[];
-  chicken: boolean;
+  limit: boolean; // a recognised limit hand was scored
   /** dollars: positive = human gains, negative = human pays */
   payments: number[]; // per player delta in dollars
   handTiles: TileId[]; // winner's full hand for display
   handMelds: Meld[];
+}
+
+/** A kong the human may declare on their turn. */
+export interface KongOption {
+  type: "concealed" | "added"; // 暗杠 (4 in hand) | 加杠 (upgrade a melded pong)
+  tile: TileId;
 }
 
 export interface DrawResult {
@@ -118,8 +129,12 @@ export interface GameState {
   lastDiscard: { playerIndex: number; tile: TileId } | null;
   /** Pending claim options offered to the human (phase === "player-claim"). */
   claim: ClaimOptions | null;
+  /** An added kong awaiting a possible robbery before it completes. */
+  pendingKong: { konger: number; tile: TileId } | null;
   /** Whether the human's current draw lets them self-draw win. */
   canSelfDrawWin: boolean;
+  /** Kongs the human may declare on their turn (concealed or added). */
+  kongOptions: KongOption[];
   /** The tile the human just drew (rendered apart on the right of the hand). */
   drawnTile: TileId | null;
   handNumber: number;

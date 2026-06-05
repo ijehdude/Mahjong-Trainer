@@ -32,11 +32,11 @@ export default function SetupPage() {
   };
 
   const ruleSummary = [
-    "Singapore Rules",
-    `${rules.players}-Player`,
-    `Min ${rules.minTai} Tai`,
-    `$${rules.payoutRate.toFixed(2)}/tai`,
-    rules.flowerTiles ? "Flowers ON" : "Flowers OFF",
+    "新加坡规则",
+    `${rules.players}人`,
+    `最低${rules.minTai}台`,
+    `$${rules.payoutRate.toFixed(2)}/台`,
+    rules.flowerTiles ? "有花" : "无花",
   ].join(" · ");
 
   return (
@@ -46,9 +46,9 @@ export default function SetupPage() {
         <div className="flex items-center justify-end">
           <button
             onClick={() => setGuideOpen(true)}
-            className="rounded-full border border-[rgba(255,255,255,0.1)] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)] transition-colors hover:text-[var(--accent-gold)]"
+            className="rounded-full border border-[rgba(255,255,255,0.1)] px-4 py-1.5 text-xs font-semibold tracking-widest text-[var(--text-muted)] transition-colors hover:text-[var(--accent-gold)]"
           >
-            📖 Guide
+            📖 攻略 Guide
           </button>
         </div>
 
@@ -56,47 +56,47 @@ export default function SetupPage() {
           <div className="rotate-3 transition-transform hover:rotate-0">
             <TileComponent tileId="zhong" size="hand" />
           </div>
-          <h1 className="mt-5 font-display text-5xl font-black tracking-[0.12em] text-[var(--accent-gold)]">
-            MAHJONG
+          <h1 className="mt-5 font-display text-4xl font-black tracking-[0.12em] text-[var(--accent-gold)]">
+            麻将策略训练器
           </h1>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.42em] text-[var(--text-muted)]">
-            Strategy Trainer
+          <p className="mt-1.5 text-xs font-semibold uppercase tracking-[0.34em] text-[var(--text-muted)]">
+            Mahjong Strategy Trainer
           </p>
         </header>
 
         <div className="mt-9 space-y-7">
-          <SettingsCard title="Number of Players">
+          <SettingsCard title="玩家人数" en="Players">
             <SegmentedControl<PlayerCount>
               options={[
-                { label: "2P", value: 2 },
-                { label: "3P", value: 3 },
-                { label: "4P", value: 4 },
+                { label: "2人", value: 2 },
+                { label: "3人", value: 3 },
+                { label: "4人", value: 4 },
               ]}
               value={rules.players}
               onChange={(v) => update("players", v)}
             />
             <p className="text-xs text-[var(--text-muted)]">
-              Singapore rules — 4P is standard. 3P removes the North wind.
+              新加坡规则以 4 人为标准；3 人去掉北风。
             </p>
           </SettingsCard>
 
-          <SettingsCard title="Fei Tile — Flowers & Seasons">
+          <SettingsCard title="花牌（花 / 季）" en="Flowers & Seasons">
             <ToggleRow
-              label="Flower & Season Tiles"
-              description="8 bonus tiles; revealed on draw with a replacement."
+              label="花牌与季牌"
+              description="Flower & season tiles — 8 bonus tiles, revealed with a replacement draw."
               checked={rules.flowerTiles}
               onChange={(v) => update("flowerTiles", v)}
             />
             {rules.flowerTiles && (
               <div className="pl-1">
                 <p className="mb-2 text-xs text-[var(--text-muted)]">
-                  Fei Payout
+                  花牌台数 Fei Payout
                 </p>
                 <SegmentedControl<FeiPayout>
                   options={[
-                    { label: "No extra", value: "none" },
-                    { label: "+1 tai", value: "1tai" },
-                    { label: "+2 tai", value: "2tai" },
+                    { label: "无 None", value: "none" },
+                    { label: "+1台", value: "1tai" },
+                    { label: "+2台", value: "2tai" },
                   ]}
                   value={rules.feiPayout}
                   onChange={(v) => update("feiPayout", v)}
@@ -106,22 +106,23 @@ export default function SetupPage() {
           </SettingsCard>
 
           <SettingsCard
-            title="Minimum Tai"
-            helper="Minimum winning score to collect payment"
+            title="最低台数"
+            en="Minimum Tai"
+            helper="收取赔付所需的最低胡牌台数 · Minimum score to collect."
           >
             <SegmentedControl<MinTai>
               options={[
-                { label: "1", value: 1 },
-                { label: "2", value: 2 },
-                { label: "3", value: 3 },
-                { label: "4", value: 4 },
+                { label: "1台", value: 1 },
+                { label: "2台", value: 2 },
+                { label: "3台", value: 3 },
+                { label: "4台", value: 4 },
               ]}
               value={rules.minTai}
               onChange={(v) => update("minTai", v)}
             />
           </SettingsCard>
 
-          <SettingsCard title="Payout Rate (per tai)">
+          <SettingsCard title="每台赔率" en="Payout per Tai">
             <SegmentedControl<number>
               options={[
                 { label: "$0.10", value: 0.1 },
@@ -149,7 +150,7 @@ export default function SetupPage() {
             </div>
           </SettingsCard>
 
-          <SettingsCard title="Starting Stack">
+          <SettingsCard title="起始筹码" en="Starting Stack">
             <SegmentedControl<number>
               options={[
                 { label: "$50", value: 50 },
@@ -180,35 +181,35 @@ export default function SetupPage() {
             </div>
           </SettingsCard>
 
-          <SettingsCard title="Special Rules">
+          <SettingsCard title="特殊规则" en="Special Rules">
             <div className="space-y-2">
               <ToggleRow
-                label="Kong Bonus"
-                description="Collect payment for declaring a Kong."
+                label="杠牌奖励"
+                description="Kong Bonus — collect payment for declaring a kong."
                 checked={rules.kongBonus}
                 onChange={(v) => update("kongBonus", v)}
               />
               <ToggleRow
-                label="Heavenly Hand (天胡)"
-                description="Dealer wins on the first deal."
+                label="天胡"
+                description="Heavenly Hand — dealer wins on the first deal."
                 checked={rules.heavenlyHand}
                 onChange={(v) => update("heavenlyHand", v)}
               />
               <ToggleRow
-                label="Earthly Hand (地胡)"
-                description="Non-dealer wins on dealer's first discard."
+                label="地胡"
+                description="Earthly Hand — non-dealer wins on dealer's first discard."
                 checked={rules.earthlyHand}
                 onChange={(v) => update("earthlyHand", v)}
               />
               <ToggleRow
-                label="Chicken Hand (鸡胡)"
-                description="Allow winning with no tai (counts as 1)."
-                checked={rules.chickenHand}
-                onChange={(v) => update("chickenHand", v)}
+                label="抢杠胡"
+                description="Robbing the Kong — win on a tile used to form an added kong (+1 tai)."
+                checked={rules.robbingKong}
+                onChange={(v) => update("robbingKong", v)}
               />
               <ToggleRow
-                label="Limit Hand Cap"
-                description="Maximum payout capped at 8 tai."
+                label="封顶台数"
+                description="Limit Hand Cap — maximum payout capped at 5 tai."
                 checked={rules.limitHandCap}
                 onChange={(v) => update("limitHandCap", v)}
               />
@@ -216,12 +217,13 @@ export default function SetupPage() {
           </SettingsCard>
 
           <SettingsCard
-            title="Strategy Coach"
-            helper="Local runs fully offline (no API key needed). AI uses Claude for richer, table-aware advice."
+            title="策略教练"
+            en="Strategy Coach"
+            helper="本地：完全离线，无需密钥 · AI：使用 Claude 提供更深入的建议。"
           >
             <SegmentedControl<CoachEngine>
               options={[
-                { label: "Local (offline)", value: "local" },
+                { label: "本地 Local", value: "local" },
                 { label: "AI (Claude)", value: "ai" },
               ]}
               value={rules.coachEngine}
@@ -230,13 +232,14 @@ export default function SetupPage() {
           </SettingsCard>
 
           <SettingsCard
-            title="Strategy Feedback Detail"
-            helper="How much explanation to show after each discard"
+            title="提示详细度"
+            en="Feedback Detail"
+            helper="每次打牌后显示多少解释 · How much explanation to show."
           >
             <SegmentedControl<GameRules["feedbackDetail"]>
               options={[
-                { label: "Brief", value: "brief" },
-                { label: "Detailed", value: "detailed" },
+                { label: "简略 Brief", value: "brief" },
+                { label: "详细 Detailed", value: "detailed" },
               ]}
               value={rules.feedbackDetail}
               onChange={(v) => update("feedbackDetail", v)}
@@ -246,16 +249,16 @@ export default function SetupPage() {
 
         {/* Footer */}
         <div className="mt-9">
-          <p className="mb-4 text-center text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
+          <p className="mb-4 text-center text-[11px] tracking-[0.14em] text-[var(--text-muted)]">
             {ruleSummary}
           </p>
           <Button
             variant="gold"
             fullWidth
             onClick={dealMeIn}
-            className="py-4 text-base"
+            className="py-4 text-base font-bold tracking-wide"
           >
-            DEAL ME IN
+            开始发牌 · DEAL ME IN
           </Button>
         </div>
       </div>

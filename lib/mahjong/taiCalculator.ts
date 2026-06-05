@@ -1,27 +1,32 @@
 import type { GameRules } from "@/types/game";
 import type { Meld } from "@/types/game";
+import { LIMIT_TAI } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
-import { DRAGONS } from "@/types/tiles";
-import { Decomposition } from "./handValidator";
+import { DRAGONS, WINDS } from "@/types/tiles";
+import { Decomposition, isThirteenOrphans } from "./handValidator";
 import { isSuit, suitOf } from "./tiles";
 
 /* ===========================================================================
-   Singapore tai (points) scoring.
+   Singapore tai (points) scoring, including special / limit hands.
    =========================================================================== */
 
 export interface TaiResult {
-  tai: number; // final tai after caps / chicken adjustment
+  tai: number; // final tai after the limit cap
   rawTai: number; // before cap
   breakdown: { label: string; tai: number }[];
-  chicken: boolean; // won as a chicken hand (0 natural tai)
+  limit: boolean; // a recognised limit hand was scored
 }
 
 interface ScoreContext {
-  decomposition: Decomposition;
+  /** null => the hand is Thirteen Orphans (no standard decomposition). */
+  decomposition: Decomposition | null;
+  /** Full concealed tiles incl. the winning tile (excludes declared melds). */
+  concealedTiles: TileId[];
   melds: Meld[];
   seatWind: Wind;
   roundWind: Wind;
   selfDraw: boolean;
+  robKong: boolean;
   flowerCount: number;
   rules: GameRules;
 }
@@ -32,97 +37,156 @@ const FEI_TAI: Record<GameRules["feiPayout"], number> = {
   "2tai": 2,
 };
 
-export function calculateTai(ctx: ScoreContext): TaiResult {
-  const { decomposition, melds, seatWind, roundWind, selfDraw, flowerCount, rules } =
-    ctx;
-  const breakdown: { label: string; tai: number }[] = [];
+/** Pure Nine Gates shape: one suit, 3x1, 3x9, at least one each of 2–8. */
+function isNineGates(tiles: TileId[], melds: Meld[]): boolean {
+  if (melds.length > 0 || tiles.length !== 14) return false;
+  if (!tiles.every(isSuit)) return false;
+  const suits = new Set(tiles.map((t) => suitOf(t)));
+  if (suits.size !== 1) return false;
+  const suit = [...suits][0]!;
+  const c = (r: number) => tiles.filter((t) => t === `${r}${suit}`).length;
+  if (c(1) < 3 || c(9) < 3) return false;
+  for (let r = 2; r <= 8; r++) if (c(r) < 1) return false;
+  return true;
+}
 
-  const allSets = decomposition.sets;
+export function calculateTai(ctx: ScoreContext): TaiResult {
+  const {
+    decomposition,
+    concealedTiles,
+    melds,
+    seatWind,
+    roundWind,
+    selfDraw,
+    robKong,
+    flowerCount,
+    rules,
+  } = ctx;
+  const breakdown: { label: string; tai: number }[] = [];
+  let limit = false;
+
+  const addBonus = () => {
+    if (selfDraw) breakdown.push({ label: "Self-draw 自摸", tai: 1 });
+    if (rules.robbingKong && robKong)
+      breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
+    if (rules.kongBonus) {
+      const kongs = melds.filter((m) => m.type === "kong").length;
+      for (let i = 0; i < kongs; i++) breakdown.push({ label: "Kong 杠", tai: 1 });
+    }
+    if (rules.flowerTiles && flowerCount > 0) {
+      const per = FEI_TAI[rules.feiPayout];
+      if (per > 0)
+        breakdown.push({
+          label: `${flowerCount} flower/season 花`,
+          tai: per * flowerCount,
+        });
+    }
+  };
+
+  // ---- Thirteen Orphans (十三幺) — special limit hand ----------------------
+  if (!decomposition) {
+    if (isThirteenOrphans(concealedTiles, melds)) {
+      breakdown.push({ label: "Thirteen Orphans 十三幺", tai: 13 });
+      limit = true;
+    }
+    addBonus();
+    return finalize(breakdown, rules, limit);
+  }
+
+  const sets = decomposition.sets;
+  const triplets = sets.filter((s) => s.type === "triplet");
   const allTiles = [
-    ...allSets.flatMap((s) => s.tiles),
+    ...sets.flatMap((s) => s.tiles),
     decomposition.pair,
     decomposition.pair,
   ];
 
-  // ---- Honor triplets: seat wind, round wind, dragons ----------------------
-  for (const set of allSets) {
-    if (set.type !== "triplet") continue;
+  // ---- Honor triplets: seat wind, round wind, dragons ---------------------
+  for (const set of triplets) {
     const t = set.tiles[0];
-    if (t === seatWind) breakdown.push({ label: "Seat wind triplet", tai: 1 });
+    if (t === seatWind) breakdown.push({ label: "Seat wind triplet 自风", tai: 1 });
     if (t === roundWind && roundWind !== seatWind)
-      breakdown.push({ label: "Round wind triplet", tai: 1 });
+      breakdown.push({ label: "Round wind triplet 圈风", tai: 1 });
     if (t === roundWind && roundWind === seatWind)
-      breakdown.push({ label: "Double wind (seat = round)", tai: 1 });
+      breakdown.push({ label: "Double wind 连风", tai: 1 });
     if ((DRAGONS as string[]).includes(t)) {
       const name = { zhong: "Red", fa: "Green", bai: "White" }[
         t as "zhong" | "fa" | "bai"
       ];
-      breakdown.push({ label: `${name} dragon triplet`, tai: 1 });
+      breakdown.push({ label: `${name} dragon 箭刻`, tai: 1 });
     }
   }
 
-  // ---- All triplets (对对胡) ------------------------------------------------
-  const allTriplets = allSets.every((s) => s.type === "triplet");
-  if (allTriplets) breakdown.push({ label: "All triplets (对对胡)", tai: 3 });
+  // ---- Special limit hands -----------------------------------------------
+  const dragonTriplets = triplets.filter((s) =>
+    (DRAGONS as string[]).includes(s.tiles[0])
+  ).length;
+  const windTriplets = triplets.filter((s) =>
+    (WINDS as string[]).includes(s.tiles[0])
+  ).length;
+  const pairIsDragon = (DRAGONS as string[]).includes(decomposition.pair);
+  const pairIsWind = (WINDS as string[]).includes(decomposition.pair);
+  const kongCount = melds.filter((m) => m.type === "kong").length;
 
-  // ---- All one suit (清一色) — pure, no honors -----------------------------
+  if (dragonTriplets === 3) {
+    breakdown.push({ label: "Big Three Dragons 大三元", tai: 8 });
+    limit = true;
+  } else if (dragonTriplets === 2 && pairIsDragon) {
+    breakdown.push({ label: "Small Three Dragons 小三元", tai: 5 });
+  }
+
+  if (windTriplets === 4) {
+    breakdown.push({ label: "Big Four Winds 大四喜", tai: 13 });
+    limit = true;
+  } else if (windTriplets === 3 && pairIsWind) {
+    breakdown.push({ label: "Small Four Winds 小四喜", tai: 8 });
+    limit = true;
+  }
+
+  if (kongCount === 4) {
+    breakdown.push({ label: "Eighteen Arhats 十八罗汉 (4 kongs)", tai: 13 });
+    limit = true;
+  }
+
+  if (isNineGates(concealedTiles, melds)) {
+    breakdown.push({ label: "Nine Gates 九莲宝灯", tai: 10 });
+    limit = true;
+  }
+
+  // ---- All triplets (对对胡) ----------------------------------------------
+  if (sets.every((s) => s.type === "triplet"))
+    breakdown.push({ label: "All triplets 对对胡", tai: 3 });
+
+  // ---- All one suit (清一色) — pure, no honors ----------------------------
   const suitTiles = allTiles.filter(isSuit);
   if (suitTiles.length === allTiles.length) {
     const suits = new Set(suitTiles.map((t) => suitOf(t)));
     if (suits.size === 1)
-      breakdown.push({ label: "All one suit (清一色)", tai: 3 });
+      breakdown.push({ label: "All one suit 清一色", tai: 3 });
   }
 
-  // ---- Self-draw (自摸) -----------------------------------------------------
-  if (selfDraw) breakdown.push({ label: "Self-draw (自摸)", tai: 1 });
+  addBonus();
+  return finalize(breakdown, rules, limit);
+}
 
-  // ---- Kong bonus ----------------------------------------------------------
-  if (rules.kongBonus) {
-    const kongs = melds.filter((m) => m.type === "kong").length;
-    for (let i = 0; i < kongs; i++)
-      breakdown.push({ label: "Kong", tai: 1 });
-  }
-
-  // ---- Flowers / Seasons ---------------------------------------------------
-  if (rules.flowerTiles && flowerCount > 0) {
-    const per = FEI_TAI[rules.feiPayout];
-    if (per > 0)
-      breakdown.push({
-        label: `${flowerCount} flower/season`,
-        tai: per * flowerCount,
-      });
-  }
-
+function finalize(
+  breakdown: { label: string; tai: number }[],
+  rules: GameRules,
+  limit: boolean
+): TaiResult {
   const rawTai = breakdown.reduce((s, b) => s + b.tai, 0);
-
-  // ---- Chicken hand handling ----------------------------------------------
-  let chicken = false;
   let tai = rawTai;
-  if (rawTai === 0) {
-    if (rules.chickenHand) {
-      chicken = true;
-      tai = 1;
-      breakdown.push({ label: "Chicken hand (鸡胡)", tai: 1 });
-    }
+  if (rules.limitHandCap && tai > LIMIT_TAI) {
+    tai = LIMIT_TAI;
+    breakdown.push({ label: `Limit cap ${LIMIT_TAI}台`, tai: 0 });
   }
-
-  // ---- Limit cap -----------------------------------------------------------
-  if (rules.limitHandCap && tai > 8) {
-    tai = 8;
-    breakdown.push({ label: "Limit cap (8 tai)", tai: 0 });
-  }
-
-  return { tai, rawTai, breakdown, chicken };
+  return { tai, rawTai, breakdown, limit };
 }
 
 /**
  * Compute per-player dollar payments. Winner collects `tai * rate` from each
- * loser. On a discard win, the discarder pays for everyone (pao-style simplified:
- * here we use the common Singapore rule where the discarder pays double and
- * others pay their share only on self-draw). We model the widely used variant:
- *   - Self-draw: every loser pays winner `tai * rate` (dealer pays double).
- *   - Discard win: the discarder pays the full `3 * tai * rate`; others pay 0.
- * Dealer involvement doubles that player's share.
+ * loser. On a discard win, the discarder pays for everyone; dealer involvement
+ * doubles that player's share.
  */
 export function computePayments(opts: {
   playerCount: number;
@@ -149,7 +213,7 @@ export function computePayments(opts: {
       payments[winnerIndex] += amt;
     }
   } else {
-    // Discard win: discarder pays the table (3 shares).
+    // Discard / robbed win: the feeder pays the table (3 shares).
     const amt = base * 3 * multiplier(discarderIndex);
     payments[discarderIndex] -= amt;
     payments[winnerIndex] += amt;

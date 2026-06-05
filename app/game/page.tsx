@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ChiOption, GameRules, GameState } from "@/types/game";
+import type { ChiOption, GameRules, GameState, KongOption } from "@/types/game";
 import type { TileId } from "@/types/tiles";
 import { DEFAULT_RULES } from "@/types/game";
 import { RULES_STORAGE_KEY } from "@/lib/storage";
@@ -12,6 +12,7 @@ import {
   humanClaim,
   humanDeclareWin,
   humanDiscard,
+  humanKong,
   humanPass,
   recordDiscardAccuracy,
   startNextHand,
@@ -179,6 +180,13 @@ export default function GamePage() {
     setState(humanClaim(state, type, chi?.tiles));
   };
 
+  const handleSelfKong = (opt: KongOption) => {
+    abortRef.current?.abort();
+    setSelected(null);
+    setFeedback(EMPTY_FEEDBACK);
+    setState(humanKong(state, opt));
+  };
+
   const handlePass = () => setState(humanPass(state));
 
   const handleNextHand = () => {
@@ -202,10 +210,10 @@ export default function GamePage() {
   const isPlayerClaim = state.phase === "player-claim";
   const waitingLabel =
     state.phase === "await-claims"
-      ? "Resolving discards…"
+      ? "结算中… Resolving…"
       : !state.players[state.turnIndex]?.isHuman
-        ? `${state.players[state.turnIndex]?.name} is thinking…`
-        : "Your turn";
+        ? `${state.players[state.turnIndex]?.name} 思考中… thinking`
+        : "轮到你了 Your turn";
 
   return (
     <main className="flex h-dvh flex-col bg-[var(--bg-felt)]">
@@ -247,8 +255,13 @@ export default function GamePage() {
         {isPlayerClaim && state.claim && (
           <div className="mb-3 rounded-2xl border border-[var(--accent-gold)] bg-[var(--bg-surface)]/95 px-4 py-3">
             <span className="text-sm font-semibold text-[var(--accent-gold)]">
-              {state.players[state.claim.discarderIndex].name} discarded{" "}
-              {tileName(state.claim.discardTile)} — claim it?
+              {state.claim.robKong
+                ? `${state.players[state.claim.discarderIndex].name} 加杠 ${tileName(
+                    state.claim.discardTile
+                  )} — 抢杠胡？(Rob the kong?)`
+                : `${state.players[state.claim.discarderIndex].name} 打出 ${tileName(
+                    state.claim.discardTile
+                  )} — 要吗？(claim?)`}
             </span>
           </div>
         )}
@@ -256,17 +269,19 @@ export default function GamePage() {
         {/* Action buttons */}
         {isPlayerChoose && (
           <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
+            <span className="text-[11px] tracking-wider text-[var(--text-muted)]">
               {selected
-                ? `Discard ${tileName(selected)}?`
-                : "Tap a tile to pre-select"}
+                ? `打出 ${tileName(selected)}?`
+                : "点击牌张预选 Tap a tile"}
             </span>
             <ActionButtons
               mode="discard"
               canDiscard={!!selected}
               canWin={state.canSelfDrawWin}
+              selfKongOptions={state.kongOptions}
               onDiscard={handleDiscard}
               onWin={handleWin}
+              onSelfKong={handleSelfKong}
             />
           </div>
         )}

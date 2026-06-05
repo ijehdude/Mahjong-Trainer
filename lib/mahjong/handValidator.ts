@@ -117,9 +117,38 @@ export function decomposeWin(
   return { sets: [...base.sets, ...meldSets], pair: base.pair };
 }
 
-/** Is `concealed` + `melds` a complete winning hand? */
+/** The 13 terminal/honor tiles that make up Thirteen Orphans (十三幺). */
+export const ORPHAN_TILES: TileId[] = [
+  "1wan", "9wan", "1tong", "9tong", "1bam", "9bam",
+  "east", "south", "west", "north", "zhong", "fa", "bai",
+];
+
+/**
+ * Thirteen Orphans (十三幺): one of each of the 13 terminal/honor tiles plus a
+ * duplicate of any one of them. Only valid as a fully concealed hand.
+ */
+export function isThirteenOrphans(concealed: TileId[], melds: Meld[]): boolean {
+  if (melds.length > 0 || concealed.length !== 14) return false;
+  const counts = countTiles(concealed);
+  // Every tile must be an orphan tile.
+  for (const id of counts.keys()) {
+    if (!ORPHAN_TILES.includes(id)) return false;
+  }
+  // All 13 present, exactly one of them doubled.
+  let pairs = 0;
+  for (const orphan of ORPHAN_TILES) {
+    const c = counts.get(orphan) ?? 0;
+    if (c === 0) return false;
+    if (c === 2) pairs++;
+    else if (c !== 1) return false;
+  }
+  return pairs === 1;
+}
+
+/** Is `concealed` + `melds` a complete winning hand (standard or special)? */
 export function isWinningHand(concealed: TileId[], melds: Meld[]): boolean {
-  return decomposeWin(concealed, melds) !== null;
+  if (decomposeWin(concealed, melds) !== null) return true;
+  return isThirteenOrphans(concealed, melds);
 }
 
 /**

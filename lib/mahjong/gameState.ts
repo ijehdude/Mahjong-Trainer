@@ -2,6 +2,7 @@ import type {
   ChiOption,
   GameRules,
   GameState,
+  KongOption,
   Meld,
   Player,
   RelativeSeat,
@@ -9,11 +10,11 @@ import type {
 } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
 import { buildDeck, deal, shuffle } from "./deck";
-import { isWinningHand } from "./handValidator";
+import { isThirteenOrphans, isWinningHand } from "./handValidator";
 import { calculateTai, computePayments } from "./taiCalculator";
 import { decomposeWin } from "./handValidator";
 import { botWantsKong, botWantsPong, chooseBotDiscard } from "./botAI";
-import { isBonus, isSuit, rankOf, suitOf } from "./tiles";
+import { countTiles, isBonus, isSuit, rankOf, suitOf } from "./tiles";
 
 /* ===========================================================================
    Core game engine. Pure transition functions driven by the React component.
@@ -65,7 +66,9 @@ export function createGame(rules: GameRules): GameState {
     phase: "await-draw",
     lastDiscard: null,
     claim: null,
+    pendingKong: null,
     canSelfDrawWin: false,
+    kongOptions: [],
     drawnTile: null,
     handNumber: 1,
     result: null,
@@ -206,21 +209,34 @@ function doDraw(state: GameState): GameState {
   };
 
   if (player.isHuman) {
-    // Human draws then chooses; flag self-draw win availability.
+    // Human draws then chooses; flag self-draw win + kong availability.
     return {
       ...next,
       phase: "player-choose",
       canSelfDrawWin: meetsMinTai(next, state.turnIndex, null),
+      kongOptions: detectKongOptions(me),
       drawnTile: tile,
       lastDiscard: null,
     };
   }
 
-  // Bot: check self-draw win, else discard.
-  if (meetsMinTai(next, state.turnIndex, null)) {
-    return computeWin(next, state.turnIndex, null);
+  // Bot: win / kong / discard.
+  return botPostDraw(next, state.turnIndex);
+}
+
+/** Bot decision after acquiring a tile: self-draw win, maybe kong, else discard. */
+function botPostDraw(state: GameState, index: number): GameState {
+  if (meetsMinTai(state, index, null)) {
+    return computeWin(state, index, null);
   }
-  return doBotDiscardFor(next, state.turnIndex);
+  const me = state.players[index];
+  const opts = detectKongOptions(me);
+  const added = opts.find((o) => o.type === "added");
+  const concealed = opts.find((o) => o.type === "concealed");
+  if (added && Math.random() < 0.5) return botAttemptAddedKong(state, index, added.tile);
+  if (concealed && Math.random() < 0.5)
+    return completeConcealedKong(state, index, concealed.tile);
+  return doBotDiscardFor(state, index);
 }
 
 function doBotDiscard(state: GameState): GameState {
@@ -258,8 +274,185 @@ export function humanDiscard(state: GameState, tile: TileId): GameState {
     lastDiscard: { playerIndex: state.humanIndex, tile },
     phase: "await-claims",
     canSelfDrawWin: false,
+    kongOptions: [],
     drawnTile: null,
   };
+}
+
+/* ---- Kong machinery ------------------------------------------------------- */
+
+/** Kongs the player may declare on their turn (concealed quad or added kong). */
+function detectKongOptions(player: Player): KongOption[] {
+  const opts: KongOption[] = [];
+  for (const [t, c] of countTiles(player.hand)) {
+    if (c >= 4) opts.push({ type: "concealed", tile: t });
+  }
+  for (const m of player.melds) {
+    if (m.type === "pong" && player.hand.includes(m.tiles[0]))
+      opts.push({ type: "added", tile: m.tiles[0] });
+  }
+  return opts;
+}
+
+function removeCopies(hand: TileId[], tile: TileId, n: number): TileId[] {
+  const out = [...hand];
+  for (let i = 0; i < n; i++) {
+    const idx = out.indexOf(tile);
+    if (idx !== -1) out.splice(idx, 1);
+  }
+  return out;
+}
+
+/** Draw the kong replacement tile, then continue (win / discard / choose). */
+function afterKongDraw(state: GameState, index: number): GameState {
+  if (state.wall.length === 0) return endExhausted(state);
+  const { tile: repl, wall, flowersAdded } = drawLiveTile(
+    state.wall,
+    state.players[index]
+  );
+  if (repl === null) return endExhausted(state);
+  const players = state.players.map((p) => ({ ...p }));
+  const me = players[index];
+  me.hand = [...me.hand, repl];
+  if (flowersAdded.length) me.flowers = [...me.flowers, ...flowersAdded];
+  const s: GameState = {
+    ...state,
+    players,
+    wall,
+    lastDiscard: null,
+    claim: null,
+    pendingKong: null,
+  };
+  if (me.isHuman) {
+    return {
+      ...s,
+      phase: "player-choose",
+      canSelfDrawWin: meetsMinTai(s, index, null),
+      kongOptions: detectKongOptions(me),
+      drawnTile: repl,
+    };
+  }
+  return botPostDraw(s, index);
+}
+
+function completeConcealedKong(
+  state: GameState,
+  index: number,
+  tile: TileId
+): GameState {
+  const players = state.players.map((p) => ({ ...p }));
+  const me = players[index];
+  me.hand = removeCopies(me.hand, tile, 4);
+  me.melds = [
+    ...me.melds,
+    { type: "kong", tiles: [tile, tile, tile, tile], concealed: true },
+  ];
+  return afterKongDraw(
+    {
+      ...state,
+      players,
+      kongOptions: [],
+      log: [...state.log, `${me.name} declares a concealed KONG.`],
+    },
+    index
+  );
+}
+
+/** Upgrade a melded pong to a kong, then draw replacement. */
+function completeAddedKong(
+  state: GameState,
+  index: number,
+  tile: TileId
+): GameState {
+  const players = state.players.map((p) => ({ ...p }));
+  const me = players[index];
+  me.hand = removeCopies(me.hand, tile, 1);
+  me.melds = me.melds.map((m) =>
+    m.type === "pong" && m.tiles[0] === tile
+      ? { type: "kong", tiles: [tile, tile, tile, tile] }
+      : m
+  );
+  return afterKongDraw(
+    {
+      ...state,
+      players,
+      kongOptions: [],
+      log: [...state.log, `${me.name} declares an added KONG.`],
+    },
+    index
+  );
+}
+
+/** Bot declares an added kong; players may rob it (抢杠) if enabled. */
+function botAttemptAddedKong(
+  state: GameState,
+  index: number,
+  tile: TileId
+): GameState {
+  if (state.rules.robbingKong) {
+    const probe: GameState = {
+      ...state,
+      lastDiscard: { playerIndex: index, tile },
+    };
+    const n = state.players.length;
+    // Offer the human first if they can rob.
+    if (
+      index !== state.humanIndex &&
+      meetsMinTai(probe, state.humanIndex, index)
+    ) {
+      return {
+        ...probe,
+        phase: "player-claim",
+        pendingKong: { konger: index, tile },
+        claim: {
+          discardTile: tile,
+          discarderIndex: index,
+          canWin: true,
+          canPong: false,
+          canKong: false,
+          chiOptions: [],
+          robKong: true,
+        },
+      };
+    }
+    // Otherwise a bot robs if it can.
+    for (let step = 1; step < n; step++) {
+      const j = (index + step) % n;
+      if (j === state.humanIndex) continue;
+      if (meetsMinTai(probe, j, index))
+        return computeWin(probe, j, index, { robKong: true, winningTile: tile });
+    }
+  }
+  return completeAddedKong(state, index, tile);
+}
+
+/** Human declares an added kong; bots may rob it. */
+function humanAttemptAddedKong(
+  state: GameState,
+  tile: TileId
+): GameState {
+  const index = state.humanIndex;
+  if (state.rules.robbingKong) {
+    const probe: GameState = {
+      ...state,
+      lastDiscard: { playerIndex: index, tile },
+    };
+    const n = state.players.length;
+    for (let step = 1; step < n; step++) {
+      const j = (index + step) % n;
+      if (meetsMinTai(probe, j, index))
+        return computeWin(probe, j, index, { robKong: true, winningTile: tile });
+    }
+  }
+  return completeAddedKong(state, index, tile);
+}
+
+/** Human declares a kong from their turn (concealed or added). */
+export function humanKong(state: GameState, opt: KongOption): GameState {
+  if (state.phase !== "player-choose") return state;
+  if (opt.type === "concealed")
+    return completeConcealedKong(state, state.humanIndex, opt.tile);
+  return humanAttemptAddedKong(state, opt.tile);
 }
 
 /* ---- Claim resolution ----------------------------------------------------- */
@@ -272,6 +465,8 @@ function nextTurn(state: GameState): GameState {
     phase: "await-draw",
     lastDiscard: null,
     claim: null,
+    pendingKong: null,
+    kongOptions: [],
   };
 }
 
@@ -370,8 +565,17 @@ function offerHumanClaim(
   };
 }
 
-/** Human declines all claims on the current discard. */
+/** Human declines all claims on the current discard (or a kong-rob chance). */
 export function humanPass(state: GameState): GameState {
+  // Passing on a robbing-the-kong chance: let the added kong complete.
+  if (state.pendingKong) {
+    const { konger, tile } = state.pendingKong;
+    return completeAddedKong(
+      { ...state, claim: null, pendingKong: null },
+      konger,
+      tile
+    );
+  }
   return resolveClaims({ ...state, claim: null }, true, true);
 }
 
@@ -437,31 +641,9 @@ function applyMeld(
     ],
   };
 
-  // A Kong draws a replacement tile before discarding.
+  // An exposed Kong draws a replacement tile before discarding.
   if (type === "kong") {
-    if (base.wall.length === 0) return endExhausted(base);
-    const { tile: repl, wall, flowersAdded } = drawLiveTile(
-      base.wall,
-      claimer
-    );
-    const p2 = base.players.map((p) => ({ ...p }));
-    const c2 = p2[claimerIndex];
-    if (repl) c2.hand = [...c2.hand, repl];
-    if (flowersAdded.length) c2.flowers = [...c2.flowers, ...flowersAdded];
-    const afterKong: GameState = { ...base, players: p2, wall };
-    // Kong can lead to a self-draw win on the replacement.
-    if (repl && !c2.isHuman && meetsMinTai(afterKong, claimerIndex, null)) {
-      return computeWin(afterKong, claimerIndex, null);
-    }
-    if (c2.isHuman) {
-      return {
-        ...afterKong,
-        phase: "player-choose",
-        canSelfDrawWin: meetsMinTai(afterKong, claimerIndex, null),
-        drawnTile: repl ?? null,
-      };
-    }
-    return doBotDiscardFor(afterKong, claimerIndex);
+    return afterKongDraw(base, claimerIndex);
   }
 
   if (claimer.isHuman) {
@@ -469,6 +651,7 @@ function applyMeld(
       ...base,
       phase: "player-choose",
       canSelfDrawWin: false,
+      kongOptions: [],
       drawnTile: null,
     };
   }
@@ -489,13 +672,15 @@ function prospectiveWinTai(
     ? winner.hand
     : [...winner.hand, state.lastDiscard?.tile ?? ""];
   const decomposition = decomposeWin(concealed, winner.melds);
-  if (!decomposition) return 0;
+  if (!decomposition && !isThirteenOrphans(concealed, winner.melds)) return 0;
   return calculateTai({
     decomposition,
+    concealedTiles: concealed,
     melds: winner.melds,
     seatWind: winner.seatWind,
     roundWind: state.roundWind,
     selfDraw,
+    robKong: false,
     flowerCount: winner.flowers.length,
     rules: state.rules,
   }).tai;
@@ -516,13 +701,19 @@ export function meetsMinTai(
   return prospectiveWinTai(state, winnerIndex, discarderIndex) >= state.rules.minTai;
 }
 
-/** Human declares a win (self-draw on their turn, or ron on a discard). */
+/** Human declares a win (self-draw, ron on a discard, or robbing a kong). */
 export function humanDeclareWin(state: GameState): GameState {
   if (state.phase === "player-choose" && state.canSelfDrawWin) {
     return computeWin(state, state.humanIndex, null);
   }
   if (state.phase === "player-claim" && state.claim?.canWin) {
-    return computeWin(state, state.humanIndex, state.claim.discarderIndex);
+    const c = state.claim;
+    if (c.robKong)
+      return computeWin(state, state.humanIndex, c.discarderIndex, {
+        robKong: true,
+        winningTile: c.discardTile,
+      });
+    return computeWin(state, state.humanIndex, c.discarderIndex);
   }
   return state;
 }
@@ -530,11 +721,13 @@ export function humanDeclareWin(state: GameState): GameState {
 function computeWin(
   state: GameState,
   winnerIndex: number,
-  discarderIndex: number | null
+  discarderIndex: number | null,
+  opts?: { robKong?: boolean; winningTile?: TileId }
 ): GameState {
   const players = state.players.map((p) => ({ ...p }));
   const winner = players[winnerIndex];
   const selfDraw = discarderIndex === null;
+  const robKong = opts?.robKong ?? false;
 
   // Build the full 14-tile concealed set for scoring.
   let concealed = [...winner.hand];
@@ -543,40 +736,36 @@ function computeWin(
     // The just-drawn tile is already in hand.
     winningTile = concealed[concealed.length - 1] ?? null;
   } else {
-    winningTile = state.lastDiscard?.tile ?? null;
+    winningTile = opts?.winningTile ?? state.lastDiscard?.tile ?? null;
     if (winningTile) {
       concealed = [...concealed, winningTile];
-      // Remove the tile from the discarder's pile (it's now in the win).
-      const disc = players[discarderIndex!];
-      const di = disc.discards.lastIndexOf(winningTile);
-      if (di !== -1)
-        disc.discards = [
-          ...disc.discards.slice(0, di),
-          ...disc.discards.slice(di + 1),
-        ];
+      // On a normal ron, the tile leaves the discarder's pile. A robbed kong
+      // tile was never discarded, so there is nothing to remove.
+      if (!robKong) {
+        const disc = players[discarderIndex!];
+        const di = disc.discards.lastIndexOf(winningTile);
+        if (di !== -1)
+          disc.discards = [
+            ...disc.discards.slice(0, di),
+            ...disc.discards.slice(di + 1),
+          ];
+      }
     }
   }
 
   const decomposition = decomposeWin(concealed, winner.melds);
-  const flowerCount = winner.flowers.length;
-
-  let tai = 0;
-  let breakdown: WinResult["taiBreakdown"] = [];
-  let chicken = false;
-  if (decomposition) {
-    const result = calculateTai({
-      decomposition,
-      melds: winner.melds,
-      seatWind: winner.seatWind,
-      roundWind: state.roundWind,
-      selfDraw,
-      flowerCount,
-      rules: state.rules,
-    });
-    tai = result.tai;
-    breakdown = result.breakdown;
-    chicken = result.chicken;
-  }
+  const result0 = calculateTai({
+    decomposition,
+    concealedTiles: concealed,
+    melds: winner.melds,
+    seatWind: winner.seatWind,
+    roundWind: state.roundWind,
+    selfDraw,
+    robKong,
+    flowerCount: winner.flowers.length,
+    rules: state.rules,
+  });
+  const tai = result0.tai;
 
   const payments = computePayments({
     playerCount: players.length,
@@ -594,9 +783,10 @@ function computeWin(
     winnerIndex,
     winningTile,
     selfDraw,
+    robKong,
     tai,
-    taiBreakdown: breakdown,
-    chicken,
+    taiBreakdown: result0.breakdown,
+    limit: result0.limit,
     payments,
     handTiles: concealed,
     handMelds: winner.melds,
@@ -610,10 +800,14 @@ function computeWin(
     result,
     claim: null,
     lastDiscard: null,
+    pendingKong: null,
+    kongOptions: [],
     pnl: Math.round((state.pnl + humanDelta) * 100) / 100,
     log: [
       ...state.log,
-      `${winner.name} wins ${tai} tai${selfDraw ? " (self-draw)" : ""}.`,
+      `${winner.name} wins ${tai} tai${
+        selfDraw ? " (self-draw)" : robKong ? " (robbing the kong)" : ""
+      }.`,
     ],
   };
 }
@@ -625,6 +819,8 @@ function endExhausted(state: GameState): GameState {
     exhausted: true,
     result: null,
     claim: null,
+    pendingKong: null,
+    kongOptions: [],
     lastDiscard: null,
     log: [...state.log, "Wall exhausted — washout (no winner)."],
   };
@@ -664,7 +860,9 @@ export function startNextHand(state: GameState): GameState {
     phase: "await-draw",
     lastDiscard: null,
     claim: null,
+    pendingKong: null,
     canSelfDrawWin: false,
+    kongOptions: [],
     drawnTile: null,
     handNumber: state.handNumber + 1,
     result: null,

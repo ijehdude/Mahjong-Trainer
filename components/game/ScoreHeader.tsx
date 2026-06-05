@@ -55,28 +55,28 @@ export default function ScoreHeader({
       <div className="flex items-stretch divide-x divide-[rgba(255,255,255,0.06)] border-b border-[rgba(255,255,255,0.06)]">
         <button
           onClick={onHome}
-          className="flex items-center gap-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-primary)] hover:text-[var(--accent-gold)]"
+          className="flex items-center gap-1.5 px-3 text-xs font-semibold tracking-wider text-[var(--text-primary)] hover:text-[var(--accent-gold)]"
         >
-          ← Home
+          ← 首页
         </button>
-        <Stat label="Stack" value={money(stack)} />
-        <Stat label="P&L" value={money(pnl)} valueClass={pnlColor} />
+        <Stat label="筹码 Stack" value={money(stack)} />
+        <Stat label="盈亏 P&L" value={money(pnl)} valueClass={pnlColor} />
         <Stat
-          label="Correct"
+          label="正确 Correct"
           value={`${pct}%`}
           sub={`${correct}/${total}`}
           valueClass="text-[var(--accent-gold)]"
         />
-        <Stat label="Wall" value={String(wall)} />
+        <Stat label="牌墙 Wall" value={String(wall)} />
       </div>
 
       {/* Row 2 — round / seat / controls */}
       <div className="flex items-center gap-2 px-3 py-2 text-xs">
         <span className="rounded-lg border border-[rgba(255,255,255,0.1)] px-2.5 py-1 font-semibold text-[var(--text-primary)]">
-          ROUND: {WIND_NAME[roundWind]} {handNumber}
+          圈风 {WIND_NAME[roundWind]} {handNumber}
         </span>
         <span className="rounded-lg border border-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[var(--text-muted)]">
-          SEAT: {WIND_NAME[seatWind]}
+          门风 {WIND_NAME[seatWind]}
         </span>
         <button
           onClick={onToggleTaiHint}
@@ -86,7 +86,7 @@ export default function ScoreHeader({
               : "border-[rgba(255,255,255,0.1)] text-[var(--text-muted)]"
           }`}
         >
-          💡 TAI HINT {taiHint ? "ON" : "OFF"}
+          💡 台数提示 {taiHint ? "ON" : "OFF"}
         </button>
         <button
           onClick={onRestart}

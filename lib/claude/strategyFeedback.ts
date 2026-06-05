@@ -54,7 +54,6 @@ export function buildStrategyRequest(
     rules: {
       minTai: state.rules.minTai,
       flowerTiles: state.rules.flowerTiles,
-      chickenHand: state.rules.chickenHand,
     },
   };
 }

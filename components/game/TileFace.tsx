@@ -210,7 +210,7 @@ function CharacterFace({ tile }: { tile: Tile }) {
         fontWeight={700}
         fill={RED}
       >
-        萬
+        万
       </text>
     </g>
   );
@@ -234,17 +234,17 @@ function HonorChar({ char, color }: { char: string; color: string }) {
 
 function WindFace({ wind }: { wind: string }) {
   const CH: Record<string, string> = {
-    east: "東",
+    east: "东",
     south: "南",
     west: "西",
     north: "北",
   };
-  return <HonorChar char={CH[wind] ?? "東"} color={INK} />;
+  return <HonorChar char={CH[wind] ?? "东"} color={INK} />;
 }
 
 function DragonFace({ dragon }: { dragon: string }) {
   if (dragon === "zhong") return <HonorChar char="中" color={RED} />;
-  if (dragon === "fa") return <HonorChar char="發" color={GREEN} />;
+  if (dragon === "fa") return <HonorChar char="发" color={GREEN} />;
   // White dragon — traditional blue double frame.
   return (
     <g fill="none" stroke={BLUE} strokeWidth={1.6}>

@@ -62,6 +62,8 @@ function run(seedLabel: string, rulesOverride = {}) {
 
 run("4P default");
 run("4P no-flowers min2", { flowerTiles: false, minTai: 2 });
-run("3P chicken", { players: 3, chickenHand: true });
+run("4P robbing-kong off", { robbingKong: false });
+run("4P no-cap", { limitHandCap: false });
+run("3P", { players: 3 });
 run("2P", { players: 2 });
 console.log("ALL SMOKE TESTS PASSED");

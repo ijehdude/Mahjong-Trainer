@@ -22,19 +22,19 @@ const VERDICT_META: Record<
 > = {
   good: {
     icon: "✓",
-    title: (t) => `Discarding ${t} is a good move`,
+    title: (t) => `打 ${t} 是好选择 · Good discard`,
     color: "var(--feedback-correct)",
     bg: "rgba(39,174,96,0.12)",
   },
   risky: {
     icon: "✗",
-    title: (t) => `Risky — consider keeping ${t}`,
+    title: (t) => `有风险 · 考虑留下 ${t}`,
     color: "var(--feedback-wrong)",
     bg: "rgba(231,76,60,0.12)",
   },
   okay: {
     icon: "~",
-    title: (t) => `Reasonable, but consider…`,
+    title: () => `尚可，但可考虑… · Reasonable, but…`,
     color: "var(--feedback-neutral)",
     bg: "rgba(201,168,76,0.12)",
   },
@@ -70,8 +70,8 @@ export default function StrategyPanel({
           style={{ color: accent }}
         >
           {loading
-            ? `Analyzing ${name}…`
-            : (meta?.title(name) ?? `Discarding ${name}`)}
+            ? `分析中 Analyzing ${name}…`
+            : (meta?.title(name) ?? `打 ${name}`)}
         </span>
       </div>
 

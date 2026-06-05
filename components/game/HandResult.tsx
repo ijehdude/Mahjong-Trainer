@@ -40,20 +40,21 @@ export default function HandResult({
           {result ? (
             <>
               <div className="font-display text-3xl font-black tracking-wide text-[var(--accent-gold)]">
-                🀄 MAHJONG!
+                🀄 胡了！MAHJONG
               </div>
-              <div className="mt-1 text-sm font-semibold uppercase tracking-wider text-[var(--text-primary)]">
+              <div className="mt-1 text-sm font-semibold tracking-wider text-[var(--text-primary)]">
                 {state.players[result.winnerIndex].name} (
-                {state.players[result.winnerIndex].seatWind.toUpperCase()}) wins
+                {state.players[result.winnerIndex].seatWind.toUpperCase()}) 胡牌
+                {result.limit && " · 限制番 Limit"}
               </div>
             </>
           ) : (
             <>
               <div className="font-display text-3xl font-black tracking-wide text-[var(--text-muted)]">
-                Washout
+                流局 Washout
               </div>
               <div className="mt-1 text-sm text-[var(--text-muted)]">
-                Wall exhausted — no winner this hand.
+                牌墙耗尽，本局无人胡牌 · Wall exhausted.
               </div>
             </>
           )}
@@ -64,7 +65,7 @@ export default function HandResult({
             {/* Winning hand */}
             <div>
               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                Winning hand
+                胡牌 Winning hand
               </div>
               <div className="flex flex-wrap items-center gap-1">
                 {sortTiles(result.handTiles).map((t, i) => (
@@ -87,11 +88,15 @@ export default function HandResult({
             <div className="rounded-xl border border-[rgba(255,255,255,0.07)] p-3">
               <div className="flex items-baseline justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Score
+                  台数 Score
                 </span>
                 <span className="font-bold text-[var(--accent-gold)]">
-                  {result.tai} tai{" "}
-                  {result.selfDraw ? "· self-draw" : "· off discard"}
+                  {result.tai} 台{" "}
+                  {result.selfDraw
+                    ? "· 自摸"
+                    : result.robKong
+                      ? "· 抢杠"
+                      : "· 出铳"}
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -107,7 +112,7 @@ export default function HandResult({
                   ))}
                 {result.taiBreakdown.length === 0 && (
                   <span className="text-[11px] text-[var(--text-muted)]">
-                    No scoring elements.
+                    无计分项 No scoring elements.
                   </span>
                 )}
               </div>
@@ -117,7 +122,7 @@ export default function HandResult({
             <div className="flex items-center justify-between rounded-xl bg-[rgba(0,0,0,0.2)] px-4 py-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  You {result.payments[human.index] >= 0 ? "collect" : "pay"}
+                  {result.payments[human.index] >= 0 ? "你收 Collect" : "你付 Pay"}
                 </div>
                 <div
                   className={`text-xl font-bold ${
@@ -131,7 +136,7 @@ export default function HandResult({
               </div>
               <div className="text-right">
                 <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                  Stack {money(human.stack).replace("+", "")}
+                  筹码 {money(human.stack).replace("+", "")}
                 </div>
                 <div
                   className={`text-sm font-semibold ${
@@ -140,7 +145,7 @@ export default function HandResult({
                       : "text-[var(--feedback-wrong)]"
                   }`}
                 >
-                  P&L {money(state.pnl)}
+                  盈亏 {money(state.pnl)}
                 </div>
               </div>
             </div>
@@ -151,7 +156,7 @@ export default function HandResult({
         {lastDiscard && (
           <div className="mx-6 mb-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.18)] p-3">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Your last discard: {tileName(lastDiscard.tile)}
+              你最后打出 Last discard: {tileName(lastDiscard.tile)}
             </div>
             <div
               className={`mt-1 text-sm ${
@@ -167,7 +172,7 @@ export default function HandResult({
                 : lastDiscard.verdict === "risky"
                   ? "✗ "
                   : "~ "}
-              {lastDiscard.text || "No feedback recorded."}
+              {lastDiscard.text || "无反馈记录 No feedback recorded."}
             </div>
           </div>
         )}
@@ -175,10 +180,10 @@ export default function HandResult({
         {/* Actions */}
         <div className="flex gap-3 px-6 pb-6">
           <Button variant="gold" fullWidth onClick={onNext} className="py-3.5">
-            NEXT HAND
+            下一局 · NEXT HAND
           </Button>
           <Button variant="outline" onClick={onHome} className="py-3.5">
-            HOME
+            首页
           </Button>
         </div>
       </div>
