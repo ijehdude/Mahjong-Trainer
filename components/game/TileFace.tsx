@@ -81,8 +81,9 @@ function CircleFace({ n }: { n: number }) {
         return (
           <g key={i}>
             <circle cx={cx} cy={cy} r={r} fill={a} />
-            <circle cx={cx} cy={cy} r={r * 0.58} fill={FACE} />
-            <circle cx={cx} cy={cy} r={r * 0.3} fill={b} />
+            <circle cx={cx} cy={cy} r={r * 0.72} fill={FACE} />
+            <circle cx={cx} cy={cy} r={r * 0.54} fill={b} />
+            <circle cx={cx} cy={cy} r={r * 0.24} fill={FACE} />
           </g>
         );
       })}
@@ -187,6 +188,9 @@ function BambooFace({ n }: { n: number }) {
   );
 }
 
+// Traditional numerals as printed on real Characters tiles (note 伍 for five).
+const TRAD_NUM = ["", "一", "二", "三", "四", "伍", "六", "七", "八", "九"];
+
 function CharacterFace({ tile }: { tile: Tile }) {
   return (
     <g>
@@ -199,18 +203,18 @@ function CharacterFace({ tile }: { tile: Tile }) {
         fontWeight={700}
         fill={BLUE}
       >
-        {tile.label}
+        {TRAD_NUM[tile.rank ?? 0]}
       </text>
       <text
         x={18}
-        y={42}
+        y={43}
         textAnchor="middle"
         fontFamily={SERIF}
-        fontSize={16}
+        fontSize={17}
         fontWeight={700}
         fill={RED}
       >
-        万
+        萬
       </text>
     </g>
   );
@@ -234,17 +238,17 @@ function HonorChar({ char, color }: { char: string; color: string }) {
 
 function WindFace({ wind }: { wind: string }) {
   const CH: Record<string, string> = {
-    east: "东",
+    east: "東",
     south: "南",
     west: "西",
     north: "北",
   };
-  return <HonorChar char={CH[wind] ?? "东"} color={INK} />;
+  return <HonorChar char={CH[wind] ?? "東"} color={BLUE} />;
 }
 
 function DragonFace({ dragon }: { dragon: string }) {
   if (dragon === "zhong") return <HonorChar char="中" color={RED} />;
-  if (dragon === "fa") return <HonorChar char="发" color={GREEN} />;
+  if (dragon === "fa") return <HonorChar char="發" color={GREEN} />;
   // White dragon — traditional blue double frame.
   return (
     <g fill="none" stroke={BLUE} strokeWidth={1.6}>

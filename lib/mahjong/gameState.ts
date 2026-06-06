@@ -64,6 +64,7 @@ export function createGame(rules: GameRules): GameState {
     roundWind: "east",
     turnIndex: 0, // dealer (East) starts
     phase: "await-draw",
+    discardPile: [],
     lastDiscard: null,
     claim: null,
     pendingKong: null,
@@ -253,6 +254,7 @@ function doBotDiscardFor(state: GameState, index: number): GameState {
   return {
     ...state,
     players,
+    discardPile: [...state.discardPile, { playerIndex: index, tile }],
     lastDiscard: { playerIndex: index, tile },
     phase: "await-claims",
     canSelfDrawWin: false,
@@ -271,6 +273,10 @@ export function humanDiscard(state: GameState, tile: TileId): GameState {
   return {
     ...state,
     players,
+    discardPile: [
+      ...state.discardPile,
+      { playerIndex: state.humanIndex, tile },
+    ],
     lastDiscard: { playerIndex: state.humanIndex, tile },
     phase: "await-claims",
     canSelfDrawWin: false,
@@ -292,6 +298,20 @@ function detectKongOptions(player: Player): KongOption[] {
       opts.push({ type: "added", tile: m.tiles[0] });
   }
   return opts;
+}
+
+/** Remove the most recent matching discard from the central pile. */
+function removeFromPile(
+  pile: GameState["discardPile"],
+  playerIndex: number,
+  tile: TileId
+): GameState["discardPile"] {
+  for (let i = pile.length - 1; i >= 0; i--) {
+    if (pile[i].playerIndex === playerIndex && pile[i].tile === tile) {
+      return [...pile.slice(0, i), ...pile.slice(i + 1)];
+    }
+  }
+  return pile;
 }
 
 function removeCopies(hand: TileId[], tile: TileId, n: number): TileId[] {
@@ -672,6 +692,7 @@ function applyMeld(
   const base: GameState = {
     ...state,
     players,
+    discardPile: removeFromPile(state.discardPile, discarderIndex, tile),
     turnIndex: claimerIndex,
     lastDiscard: null,
     claim: null,
@@ -834,9 +855,15 @@ function computeWin(
   };
 
   const humanDelta = payments[state.humanIndex] ?? 0;
+  // On a normal ron, the won tile leaves the central pile too.
+  const discardPile =
+    !selfDraw && !robKong && winningTile
+      ? removeFromPile(state.discardPile, discarderIndex!, winningTile)
+      : state.discardPile;
   return {
     ...state,
     players,
+    discardPile,
     phase: "hand-over",
     result,
     claim: null,
@@ -899,6 +926,7 @@ export function startNextHand(state: GameState): GameState {
     wall: dealt.wall,
     turnIndex: 0,
     phase: "await-draw",
+    discardPile: [],
     lastDiscard: null,
     claim: null,
     pendingKong: null,

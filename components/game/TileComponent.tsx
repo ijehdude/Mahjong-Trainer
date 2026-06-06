@@ -50,11 +50,16 @@ export default function TileComponent({
     );
   }
 
-  const classes = `${SIZE[size]} relative shrink-0 select-none border bg-gradient-to-b from-white to-[#ece5d6] shadow-[0_2px_0_rgba(0,0,0,0.28),0_3px_6px_rgba(0,0,0,0.3)] transition-all duration-150 ${
+  // Stacked box-shadows fake the ivory tile's thickness (lighter edges) plus a
+  // soft drop shadow underneath — giving a subtle 3D, sitting-on-felt look.
+  const depth =
+    "shadow-[0_1px_0_#fffdf7,0_2px_0_#e4dcc8,0_4px_0_#cdc3ac,0_6px_9px_rgba(0,0,0,0.45)]";
+
+  const classes = `${SIZE[size]} relative shrink-0 select-none border bg-gradient-to-b from-white via-[#f6f1e6] to-[#e6ddca] ${depth} transition-all duration-150 ${
     selected
       ? "-translate-y-1.5 border-[var(--accent-gold)] ring-2 ring-[var(--accent-gold)] shadow-[0_0_18px_rgba(201,168,76,0.6)]"
-      : "border-[#cfc7b4]"
-  } ${recent ? "ring-2 ring-[var(--accent-gold)]/70" : ""} ${
+      : "border-[#cbc1a8]"
+  } ${recent ? "ring-2 ring-[var(--accent-gold)]/80" : ""} ${
     dimmed ? "opacity-45" : ""
   } ${
     interactive
@@ -64,8 +69,9 @@ export default function TileComponent({
 
   const inner = (
     <>
-      {/* top bevel highlight for a 3D tile feel */}
-      <span className="pointer-events-none absolute inset-x-0 top-0 h-1/3 rounded-t-[inherit] bg-gradient-to-b from-white/70 to-transparent" />
+      {/* top bevel highlight + soft side shading for a 3D tile feel */}
+      <span className="pointer-events-none absolute inset-x-0 top-0 h-2/5 rounded-t-[inherit] bg-gradient-to-b from-white/80 to-transparent" />
+      <span className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_-3px_4px_rgba(120,108,80,0.18),inset_2px_0_3px_rgba(255,255,255,0.5)]" />
       <TileFace tile={tile} />
     </>
   );

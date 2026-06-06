@@ -2,14 +2,13 @@
 
 import type { GameState, RelativeSeat } from "@/types/game";
 import { WIND_NAME } from "@/types/tiles";
-import { indexForSeat, relativeSeat } from "@/lib/mahjong/gameState";
-import DiscardPool from "./DiscardPool";
+import { indexForSeat } from "@/lib/mahjong/gameState";
 import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
 /* ===========================================================================
-   The felt table: dealer pill, opponent discard pools + melds arranged around
-   a centre info disc, and the human's own discard pool.
+   The felt table: a single central discard pile (as on a real table), with
+   each player's name / wind / melds / bonus tiles arranged around it.
    =========================================================================== */
 
 interface Props {
@@ -18,7 +17,6 @@ interface Props {
 
 export default function GameTable({ state }: Props) {
   const dealer = state.players[0];
-  const lastDiscarder = state.lastDiscard?.playerIndex ?? -1;
 
   const seatView = (seat: RelativeSeat) => {
     const idx = indexForSeat(state, seat);
@@ -30,7 +28,6 @@ export default function GameTable({ state }: Props) {
       label: `${WIND_NAME[p.seatWind].toUpperCase()} · ${p.name}`,
       isDealer: p.isDealer,
       isCurrent: state.turnIndex === idx,
-      recent: lastDiscarder === idx,
     };
   };
 
@@ -38,48 +35,6 @@ export default function GameTable({ state }: Props) {
   const left = seatView("left");
   const right = seatView("right");
   const self = seatView("self");
-
-  const OpponentBlock = ({
-    view,
-    align = "start",
-  }: {
-    view: ReturnType<typeof seatView>;
-    align?: "start" | "center";
-  }) => {
-    if (!view) return <div />;
-    return (
-      <div
-        className={`flex flex-col gap-1 ${
-          align === "center" ? "items-center" : ""
-        }`}
-      >
-        {view.player.melds.length > 0 && (
-          <MeldedSets melds={view.player.melds} size="mini" />
-        )}
-        {view.player.flowers.length > 0 && (
-          <div className="flex flex-wrap items-center gap-0.5 rounded bg-[rgba(201,168,76,0.12)] px-1 py-0.5">
-            {view.player.flowers.map((t) => (
-              <TileComponent key={t} tileId={t} size="mini" />
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-1">
-          <TileComponent tileId="east" size="mini" faceDown />
-          <span className="text-[9px] text-[var(--text-muted)]">
-            ×{view.player.hand.length}
-          </span>
-        </div>
-        <DiscardPool
-          label={view.label}
-          tiles={view.player.discards}
-          isDealer={view.isDealer}
-          isCurrent={view.isCurrent}
-          align={align}
-          compact
-        />
-      </div>
-    );
-  };
 
   return (
     <div className="felt-glow relative flex flex-1 flex-col rounded-2xl border border-[rgba(255,255,255,0.05)] p-3">
@@ -92,44 +47,124 @@ export default function GameTable({ state }: Props) {
 
       {/* Across (top) */}
       <div className="mt-3 flex justify-center">
-        <OpponentBlock view={across} align="center" />
+        <PlayerInfo view={across} align="center" />
       </div>
 
-      {/* Middle: left | centre | right */}
-      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-start gap-2">
-        <OpponentBlock view={left} />
+      {/* Middle: left | centre pile | right */}
+      <div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2">
+        <PlayerInfo view={left} vertical />
 
-        {/* Centre info disc */}
-        <div className="flex flex-col items-center justify-center gap-1 self-center rounded-2xl border border-[rgba(201,168,76,0.25)] bg-[rgba(0,0,0,0.25)] px-4 py-3">
-          <TileComponent tileId={state.roundWind} size="discard" />
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-            {WIND_NAME[state.roundWind]} 圈
-          </span>
-          <span className="text-base font-bold text-[var(--accent-gold)]">
-            {state.wall.length}
-          </span>
-          <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)]">
-            牌墙 wall
-          </span>
+        {/* Central discard pile + wall/round indicator */}
+        <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
+          <div className="flex items-center gap-2">
+            <TileComponent tileId={state.roundWind} size="meld" />
+            <div className="text-center leading-tight">
+              <div className="text-base font-bold text-[var(--accent-gold)]">
+                {state.wall.length}
+              </div>
+              <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+                牌墙 wall
+              </div>
+            </div>
+          </div>
+          <DiscardCenter state={state} />
         </div>
 
-        <div className="flex justify-end">
-          <OpponentBlock view={right} />
-        </div>
+        <PlayerInfo view={right} vertical />
       </div>
 
-      {/* Self discard pool */}
+      {/* Self (bottom) */}
       <div className="mt-auto flex justify-center pt-3">
-        {self && (
-          <DiscardPool
-            label={`${WIND_NAME[self.player.seatWind].toUpperCase()} · 我`}
-            tiles={self.player.discards}
-            isDealer={self.isDealer}
-            isCurrent={self.isCurrent}
-            align="center"
-          />
+        <PlayerInfo view={self} align="center" hideCount />
+      </div>
+    </div>
+  );
+}
+
+function DiscardCenter({ state }: { state: GameState }) {
+  const pile = state.discardPile;
+  const lastIdx = pile.length - 1;
+  if (pile.length === 0) {
+    return (
+      <div className="flex h-11 items-center text-[10px] italic text-[var(--text-muted)]/50">
+        弃牌区 discards
+      </div>
+    );
+  }
+  return (
+    <div className="flex max-w-[230px] flex-wrap justify-center gap-0.5">
+      {pile.map((d, i) => (
+        <TileComponent
+          key={i}
+          tileId={d.tile}
+          size="discard"
+          recent={i === lastIdx}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PlayerInfo({
+  view,
+  align = "start",
+  vertical = false,
+  hideCount = false,
+}: {
+  view: {
+    player: GameState["players"][number];
+    label: string;
+    isDealer: boolean;
+    isCurrent: boolean;
+  } | null;
+  align?: "start" | "center";
+  vertical?: boolean;
+  hideCount?: boolean;
+}) {
+  if (!view) return <div />;
+  const { player, label, isDealer, isCurrent } = view;
+  return (
+    <div
+      className={`flex max-w-[150px] flex-col gap-1 ${
+        align === "center" ? "items-center" : "items-start"
+      }`}
+    >
+      <div className="flex items-center gap-1.5">
+        <span
+          className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+            isCurrent
+              ? "bg-[var(--accent-gold)] text-[var(--bg-dark)]"
+              : "text-[var(--text-muted)]"
+          }`}
+        >
+          {label}
+        </span>
+        {isDealer && (
+          <span className="rounded bg-[rgba(192,57,43,0.25)] px-1 py-0.5 text-[8px] font-bold uppercase text-[#e8a59d]">
+            庄
+          </span>
+        )}
+        {!hideCount && (
+          <span className="flex items-center gap-0.5 text-[9px] text-[var(--text-muted)]">
+            <TileComponent tileId="east" size="mini" faceDown />×
+            {player.hand.length}
+          </span>
         )}
       </div>
+      {player.melds.length > 0 && (
+        <MeldedSets melds={player.melds} size="mini" />
+      )}
+      {player.flowers.length > 0 && (
+        <div
+          className={`flex flex-wrap items-center gap-0.5 rounded bg-[rgba(201,168,76,0.12)] px-1 py-0.5 ${
+            vertical ? "max-w-[64px]" : ""
+          }`}
+        >
+          {player.flowers.map((t) => (
+            <TileComponent key={t} tileId={t} size="mini" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

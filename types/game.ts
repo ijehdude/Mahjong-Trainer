@@ -131,6 +131,8 @@ export interface GameState {
   roundWind: Wind;
   turnIndex: number; // whose turn
   phase: GamePhase;
+  /** All discards in play order, shown as one central pile. */
+  discardPile: { playerIndex: number; tile: TileId }[];
   lastDiscard: { playerIndex: number; tile: TileId } | null;
   /** Pending claim options offered to the human (phase === "player-claim"). */
   claim: ClaimOptions | null;
