@@ -303,6 +303,42 @@ function removeCopies(hand: TileId[], tile: TileId, n: number): TileId[] {
   return out;
 }
 
+/**
+ * Kong Bonus: when a kong is declared, the konger immediately collects from
+ * each opponent (1 tai for an exposed/added kong, 2 tai for a concealed kong;
+ * dealer involvement doubles that share). This is separate from the win tai.
+ */
+function applyKongBonus(
+  state: GameState,
+  kongerIndex: number,
+  concealed: boolean
+): GameState {
+  if (!state.rules.kongBonus) return state;
+  const players = state.players.map((p) => ({ ...p }));
+  const base = state.rules.payoutRate * (concealed ? 2 : 1);
+  let collected = 0;
+  for (let j = 0; j < players.length; j++) {
+    if (j === kongerIndex) continue;
+    const dealerInvolved = kongerIndex === 0 || j === 0;
+    const amt = Math.round(base * (dealerInvolved ? 2 : 1) * 100) / 100;
+    players[j].stack = Math.round((players[j].stack - amt) * 100) / 100;
+    collected += amt;
+  }
+  players[kongerIndex].stack =
+    Math.round((players[kongerIndex].stack + collected) * 100) / 100;
+  const humanDelta =
+    players[state.humanIndex].stack - state.players[state.humanIndex].stack;
+  return {
+    ...state,
+    players,
+    pnl: Math.round((state.pnl + humanDelta) * 100) / 100,
+    log: [
+      ...state.log,
+      `${players[kongerIndex].name} collects the kong bonus.`,
+    ],
+  };
+}
+
 /** Draw the kong replacement tile, then continue (win / discard / choose). */
 function afterKongDraw(state: GameState, index: number): GameState {
   if (state.wall.length === 0) return endExhausted(state);
@@ -347,15 +383,17 @@ function completeConcealedKong(
     ...me.melds,
     { type: "kong", tiles: [tile, tile, tile, tile], concealed: true },
   ];
-  return afterKongDraw(
+  const withBonus = applyKongBonus(
     {
       ...state,
       players,
       kongOptions: [],
       log: [...state.log, `${me.name} declares a concealed KONG.`],
     },
-    index
+    index,
+    true
   );
+  return afterKongDraw(withBonus, index);
 }
 
 /** Upgrade a melded pong to a kong, then draw replacement. */
@@ -372,15 +410,17 @@ function completeAddedKong(
       ? { type: "kong", tiles: [tile, tile, tile, tile] }
       : m
   );
-  return afterKongDraw(
+  const withBonus = applyKongBonus(
     {
       ...state,
       players,
       kongOptions: [],
       log: [...state.log, `${me.name} declares an added KONG.`],
     },
-    index
+    index,
+    false
   );
+  return afterKongDraw(withBonus, index);
 }
 
 /** Bot declares an added kong; players may rob it (抢杠) if enabled. */
@@ -641,9 +681,9 @@ function applyMeld(
     ],
   };
 
-  // An exposed Kong draws a replacement tile before discarding.
+  // An exposed Kong collects the bonus, then draws a replacement tile.
   if (type === "kong") {
-    return afterKongDraw(base, claimerIndex);
+    return afterKongDraw(applyKongBonus(base, claimerIndex, false), claimerIndex);
   }
 
   if (claimer.isHuman) {
@@ -790,6 +830,7 @@ function computeWin(
     payments,
     handTiles: concealed,
     handMelds: winner.melds,
+    handFlowers: winner.flowers,
   };
 
   const humanDelta = payments[state.humanIndex] ?? 0;

@@ -82,6 +82,16 @@ export default function HandResult({
                   <MeldedSets melds={result.handMelds} size="discard" />
                 </div>
               )}
+              {result.handFlowers.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                  <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent-gold)]">
+                    花/季 Flowers
+                  </span>
+                  {result.handFlowers.map((t, i) => (
+                    <TileComponent key={i} tileId={t} size="discard" />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Tai breakdown */}

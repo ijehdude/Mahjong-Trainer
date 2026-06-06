@@ -122,13 +122,17 @@ export default function SetupPage() {
             />
           </SettingsCard>
 
-          <SettingsCard title="每台赔率" en="Payout per Tai">
+          <SettingsCard
+            title="底注 / 庄家"
+            en="Stake (non-dealer / dealer)"
+            helper="每台赔付：闲家 / 庄家（庄家加倍）· Dealer pays double."
+          >
             <SegmentedControl<number>
               options={[
-                { label: "$0.10", value: 0.1 },
-                { label: "$0.20", value: 0.2 },
-                { label: "$0.50", value: 0.5 },
-                { label: "$1.00", value: 1 },
+                { label: "$0.20/0.40", value: 0.2 },
+                { label: "$0.50/1", value: 0.5 },
+                { label: "$2/4", value: 2 },
+                { label: "$3/6", value: 3 },
               ]}
               value={rules.payoutRate}
               onChange={(v) => update("payoutRate", v)}
@@ -206,6 +210,12 @@ export default function SetupPage() {
                 description="Robbing the Kong — win on a tile used to form an added kong (+1 tai)."
                 checked={rules.robbingKong}
                 onChange={(v) => update("robbingKong", v)}
+              />
+              <ToggleRow
+                label="臭平胡"
+                description="Chou Ping Hu — allow a tai-less hand to win (counts as 1 tai). Ping Hu 平胡 always scores 1 tai."
+                checked={rules.chouPingHu}
+                onChange={(v) => update("chouPingHu", v)}
               />
               <ToggleRow
                 label="封顶台数"

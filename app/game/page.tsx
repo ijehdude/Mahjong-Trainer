@@ -314,6 +314,7 @@ export default function GamePage() {
         <PlayerHand
           hand={human.hand}
           melds={human.melds}
+          flowers={human.flowers}
           drawnTile={state.drawnTile}
           selected={selected}
           interactive={isPlayerChoose}

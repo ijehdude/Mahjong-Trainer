@@ -17,10 +17,11 @@ export interface GameRules {
   minTai: MinTai;
   payoutRate: number; // dollars per tai
   startingStack: number;
-  kongBonus: boolean;
+  kongBonus: boolean; // immediate payment collected when a kong is declared
   heavenlyHand: boolean;
   earthlyHand: boolean;
   robbingKong: boolean; // 抢杠胡 — win on a tile used to form an added kong
+  chouPingHu: boolean; // 臭平胡 — allow a tai-less hand to win (counts as 1 tai)
   limitHandCap: boolean; // cap payout at LIMIT_TAI (5)
   feedbackDetail: FeedbackDetail;
   coachEngine: CoachEngine; // "local" = offline heuristic, "ai" = Claude API
@@ -40,6 +41,7 @@ export const DEFAULT_RULES: GameRules = {
   heavenlyHand: false,
   earthlyHand: false,
   robbingKong: true,
+  chouPingHu: false,
   limitHandCap: true,
   feedbackDetail: "brief",
   coachEngine: "local",
@@ -104,6 +106,7 @@ export interface WinResult {
   payments: number[]; // per player delta in dollars
   handTiles: TileId[]; // winner's full hand for display
   handMelds: Meld[];
+  handFlowers: TileId[]; // winner's revealed flowers / seasons
 }
 
 /** A kong the human may declare on their turn. */

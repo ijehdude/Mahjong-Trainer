@@ -65,14 +65,12 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   const breakdown: { label: string; tai: number }[] = [];
   let limit = false;
 
+  // Note: the Kong Bonus is paid immediately when the kong is declared (see
+  // applyKongBonus in gameState) — it is NOT extra tai on the winning hand.
   const addBonus = () => {
     if (selfDraw) breakdown.push({ label: "Self-draw 自摸", tai: 1 });
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
-    if (rules.kongBonus) {
-      const kongs = melds.filter((m) => m.type === "kong").length;
-      for (let i = 0; i < kongs; i++) breakdown.push({ label: "Kong 杠", tai: 1 });
-    }
     if (rules.flowerTiles && flowerCount > 0) {
       const per = FEI_TAI[rules.feiPayout];
       if (per > 0)
@@ -154,16 +152,28 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   }
 
   // ---- All triplets (对对胡) ----------------------------------------------
-  if (sets.every((s) => s.type === "triplet"))
-    breakdown.push({ label: "All triplets 对对胡", tai: 3 });
+  const allTriplets = sets.every((s) => s.type === "triplet");
+  if (allTriplets) breakdown.push({ label: "All triplets 对对胡", tai: 2 });
 
   // ---- All one suit (清一色) — pure, no honors ----------------------------
   const suitTiles = allTiles.filter(isSuit);
+  let flush = false;
   if (suitTiles.length === allTiles.length) {
     const suits = new Set(suitTiles.map((t) => suitOf(t)));
-    if (suits.size === 1)
+    if (suits.size === 1) {
+      flush = true;
       breakdown.push({ label: "All one suit 清一色", tai: 3 });
+    }
   }
+
+  // ---- Ping Hu (平胡) — all sequences, plain (non-value) pair, no flush ----
+  const pairTile = decomposition.pair;
+  const pairIsValue =
+    pairTile === seatWind ||
+    pairTile === roundWind ||
+    (DRAGONS as string[]).includes(pairTile);
+  if (sets.every((s) => s.type === "sequence") && !pairIsValue && !flush)
+    breakdown.push({ label: "Ping Hu 平胡", tai: 1 });
 
   addBonus();
   return finalize(breakdown, rules, limit);
@@ -176,6 +186,11 @@ function finalize(
 ): TaiResult {
   const rawTai = breakdown.reduce((s, b) => s + b.tai, 0);
   let tai = rawTai;
+  // Chou Ping Hu (臭平胡): a tai-less hand still wins, counting as 1 tai.
+  if (tai === 0 && rules.chouPingHu) {
+    tai = 1;
+    breakdown.push({ label: "Chou Ping Hu 臭平胡", tai: 1 });
+  }
   if (rules.limitHandCap && tai > LIMIT_TAI) {
     tai = LIMIT_TAI;
     breakdown.push({ label: `Limit cap ${LIMIT_TAI}台`, tai: 0 });

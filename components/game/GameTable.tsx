@@ -56,6 +56,13 @@ export default function GameTable({ state }: Props) {
         {view.player.melds.length > 0 && (
           <MeldedSets melds={view.player.melds} size="mini" />
         )}
+        {view.player.flowers.length > 0 && (
+          <div className="flex flex-wrap items-center gap-0.5 rounded bg-[rgba(201,168,76,0.12)] px-1 py-0.5">
+            {view.player.flowers.map((t) => (
+              <TileComponent key={t} tileId={t} size="mini" />
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-1">
           <TileComponent tileId="east" size="mini" faceDown />
           <span className="text-[9px] text-[var(--text-muted)]">

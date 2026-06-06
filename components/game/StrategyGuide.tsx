@@ -12,15 +12,16 @@ interface Props {
 }
 
 const TAI_TABLE: { feature: string; tai: string }[] = [
+  { feature: "平胡 Ping Hu (all sequences)", tai: "+1" },
+  { feature: "对对胡 All triplets", tai: "+2" },
+  { feature: "清一色 All one suit", tai: "+3" },
   { feature: "自风刻 Seat wind triplet", tai: "+1" },
   { feature: "圈风刻 Round wind triplet", tai: "+1" },
   { feature: "箭刻 Dragon triplet (中/发/白)", tai: "+1 每" },
-  { feature: "清一色 All one suit", tai: "+3" },
-  { feature: "对对胡 All triplets", tai: "+3" },
   { feature: "自摸 Self-draw", tai: "+1" },
   { feature: "抢杠 Robbing the kong", tai: "+1" },
   { feature: "花 / 季 Flower / Season", tai: "+1 每" },
-  { feature: "杠 Kong", tai: "+1 每" },
+  { feature: "杠 Kong", tai: "即时赔付 bonus" },
   { feature: "封顶 Limit cap", tai: "5 台" },
 ];
 

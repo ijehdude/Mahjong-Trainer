@@ -14,6 +14,7 @@ import TileComponent from "./TileComponent";
 interface Props {
   hand: TileId[];
   melds: Meld[];
+  flowers: TileId[];
   drawnTile: TileId | null;
   selected: TileId | null;
   interactive: boolean;
@@ -25,6 +26,7 @@ interface Props {
 export default function PlayerHand({
   hand,
   melds,
+  flowers,
   drawnTile,
   selected,
   interactive,
@@ -50,6 +52,14 @@ export default function PlayerHand({
         <span>{seatLabel}</span>
         <span>·</span>
         <span>${bet}/台</span>
+        {flowers.length > 0 && (
+          <span className="flex items-center gap-1 rounded-md bg-[rgba(201,168,76,0.12)] px-1.5 py-0.5">
+            <span className="text-[var(--accent-gold)]">花/季 {flowers.length}</span>
+            {flowers.map((t) => (
+              <TileComponent key={t} tileId={t} size="mini" />
+            ))}
+          </span>
+        )}
       </div>
 
       {melds.length > 0 && (

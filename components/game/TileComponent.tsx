@@ -50,26 +50,34 @@ export default function TileComponent({
     );
   }
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!interactive}
-      className={`${SIZE[size]} relative shrink-0 select-none border bg-gradient-to-b from-white to-[#ece5d6] shadow-[0_2px_0_rgba(0,0,0,0.28),0_3px_6px_rgba(0,0,0,0.3)] transition-all duration-150 ${
-        selected
-          ? "-translate-y-1.5 border-[var(--accent-gold)] ring-2 ring-[var(--accent-gold)] shadow-[0_0_18px_rgba(201,168,76,0.6)]"
-          : "border-[#cfc7b4]"
-      } ${recent ? "ring-2 ring-[var(--accent-gold)]/70" : ""} ${
-        dimmed ? "opacity-45" : ""
-      } ${
-        interactive
-          ? "cursor-pointer hover:-translate-y-1 hover:border-[var(--accent-gold)] hover:shadow-[0_0_14px_rgba(201,168,76,0.45)]"
-          : "cursor-default"
-      } ${className}`}
-    >
+  const classes = `${SIZE[size]} relative shrink-0 select-none border bg-gradient-to-b from-white to-[#ece5d6] shadow-[0_2px_0_rgba(0,0,0,0.28),0_3px_6px_rgba(0,0,0,0.3)] transition-all duration-150 ${
+    selected
+      ? "-translate-y-1.5 border-[var(--accent-gold)] ring-2 ring-[var(--accent-gold)] shadow-[0_0_18px_rgba(201,168,76,0.6)]"
+      : "border-[#cfc7b4]"
+  } ${recent ? "ring-2 ring-[var(--accent-gold)]/70" : ""} ${
+    dimmed ? "opacity-45" : ""
+  } ${
+    interactive
+      ? "cursor-pointer hover:-translate-y-1 hover:border-[var(--accent-gold)] hover:shadow-[0_0_14px_rgba(201,168,76,0.45)]"
+      : "cursor-default"
+  } ${className}`;
+
+  const inner = (
+    <>
       {/* top bevel highlight for a 3D tile feel */}
       <span className="pointer-events-none absolute inset-x-0 top-0 h-1/3 rounded-t-[inherit] bg-gradient-to-b from-white/70 to-transparent" />
       <TileFace tile={tile} />
-    </button>
+    </>
   );
+
+  // Render a <button> only when interactive — otherwise a <div>, so tiles can
+  // safely sit inside other buttons (e.g. the Chi dropdown options).
+  if (interactive) {
+    return (
+      <button type="button" onClick={onClick} className={classes}>
+        {inner}
+      </button>
+    );
+  }
+  return <div className={classes}>{inner}</div>;
 }
