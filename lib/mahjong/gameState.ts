@@ -27,14 +27,17 @@ import { countTiles, isBonus, isSuit, rankOf, suitOf } from "./tiles";
 
 const SEAT_WINDS: Wind[] = ["east", "south", "west", "north"];
 
-export function createGame(rules: GameRules): GameState {
+export function createGame(rules: GameRules, seatIndex?: number): GameState {
   const n = rules.players;
   const deck = shuffle(buildDeck(rules.flowerTiles, rules.animalTiles, rules.feiTiles));
   const dealt = deal(deck, n);
 
-  // Randomise which seat the human takes. Dealer is always seat 0 (East), so
-  // the human may even be the dealer.
-  const humanIndex = Math.floor(Math.random() * n);
+  // The human's seat is normally decided by the dice-roll ceremony (seatIndex);
+  // fall back to a random seat if none is supplied. Dealer is always seat 0.
+  const humanIndex =
+    seatIndex !== undefined && seatIndex >= 0 && seatIndex < n
+      ? seatIndex
+      : Math.floor(Math.random() * n);
 
   let botCounter = 0;
   const players: Player[] = [];

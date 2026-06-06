@@ -30,6 +30,7 @@ import PlayerHand from "@/components/game/PlayerHand";
 import StrategyPanel from "@/components/game/StrategyPanel";
 import ActionButtons from "@/components/game/ActionButtons";
 import HandResult from "@/components/game/HandResult";
+import SeatCeremony from "@/components/game/SeatCeremony";
 
 interface Feedback {
   loading: boolean;
@@ -51,10 +52,12 @@ export default function GamePage() {
     text: string;
   } | null>(null);
   const [taiHint, setTaiHint] = useState(true);
+  // Show the dice-roll seat ceremony before each new game.
+  const [ceremony, setCeremony] = useState(true);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // ---- Bootstrap: load rules, create game -------------------------------
+  // ---- Bootstrap: load rules (game is created after the seat ceremony) ----
   useEffect(() => {
     let loaded = DEFAULT_RULES;
     try {
@@ -64,8 +67,13 @@ export default function GamePage() {
       /* ignore */
     }
     setRules(loaded);
-    setState(createGame(loaded));
   }, []);
+
+  // Called by the ceremony once the player's seat is drawn.
+  const handleSeated = (seatIndex: number) => {
+    setState(createGame(rules, seatIndex));
+    setCeremony(false);
+  };
 
   // ---- Engine driver: auto-advance bot/claim phases ---------------------
   useEffect(() => {
@@ -130,6 +138,10 @@ export default function GamePage() {
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, state?.phase]);
+
+  if (ceremony) {
+    return <SeatCeremony rules={rules} onSeated={handleSeated} />;
+  }
 
   if (!state) {
     return (
@@ -197,10 +209,13 @@ export default function GamePage() {
   };
 
   const handleRestart = () => {
+    // New game → re-roll for seats via the ceremony.
+    abortRef.current?.abort();
     setLastDiscardFeedback(null);
     setSelected(null);
     setFeedback(EMPTY_FEEDBACK);
-    setState(createGame(rules));
+    setState(null);
+    setCeremony(true);
   };
 
   const handleHome = () => router.push("/");
