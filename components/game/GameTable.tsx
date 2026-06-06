@@ -50,31 +50,30 @@ export default function GameTable({ state }: Props) {
         <PlayerInfo view={across} align="center" />
       </div>
 
-      {/* Middle: left | centre pile | right */}
-      <div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2">
+      {/* Left & right players flank the table */}
+      <div className="mt-3 flex items-start justify-between gap-2">
         <PlayerInfo view={left} vertical />
-
-        {/* Central discard pile + wall/round indicator */}
-        <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
-          <div className="flex items-center gap-2">
-            <TileComponent tileId={state.roundWind} size="meld" />
-            <div className="text-center leading-tight">
-              <div className="text-base font-bold text-[var(--accent-gold)]">
-                {state.wall.length}
-              </div>
-              <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
-                牌墙 wall
-              </div>
+        <div className="flex flex-col items-center gap-1">
+          <TileComponent tileId={state.roundWind} size="meld" />
+          <div className="text-center leading-tight">
+            <div className="text-base font-bold text-[var(--accent-gold)]">
+              {state.wall.length}
+            </div>
+            <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              牌墙 wall
             </div>
           </div>
-          <DiscardCenter state={state} />
         </div>
-
         <PlayerInfo view={right} vertical />
       </div>
 
+      {/* Central discard pile — spans the table, up to 12 tiles per row */}
+      <div className="mt-3 flex flex-1 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
+        <DiscardCenter state={state} />
+      </div>
+
       {/* Self (bottom) */}
-      <div className="mt-auto flex justify-center pt-3">
+      <div className="mt-3 flex justify-center pt-1">
         <PlayerInfo view={self} align="center" hideCount />
       </div>
     </div>
@@ -92,7 +91,8 @@ function DiscardCenter({ state }: { state: GameState }) {
     );
   }
   return (
-    <div className="flex max-w-[230px] flex-wrap justify-center gap-0.5">
+    // ~12 discard tiles (32px + gap) per row before wrapping.
+    <div className="flex max-w-[420px] flex-wrap justify-center gap-0.5">
       {pile.map((d, i) => (
         <TileComponent
           key={i}

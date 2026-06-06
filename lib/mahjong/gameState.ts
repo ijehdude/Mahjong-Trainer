@@ -58,7 +58,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     });
   }
 
-  return {
+  let state: GameState = {
     rules,
     players,
     humanIndex,
@@ -84,6 +84,10 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
       `Hand 1 — East round. You are ${SEAT_WINDS[humanIndex]}. Dealer is ${players[0].name} (East).`,
     ],
   };
+  // Animal pairs dealt in the opening flowers pay out immediately.
+  for (let i = 0; i < players.length; i++)
+    state = applyAnimalPair(state, i, state.players[i].flowers);
+  return state;
 }
 
 /* ---- Relative seat helpers ----------------------------------------------- */
@@ -202,7 +206,7 @@ function doDraw(state: GameState): GameState {
   me.hand = [...me.hand, tile];
   if (flowersAdded.length) me.flowers = [...me.flowers, ...flowersAdded];
 
-  const next: GameState = {
+  let next: GameState = {
     ...state,
     players,
     wall,
@@ -211,6 +215,8 @@ function doDraw(state: GameState): GameState {
         ? [...state.log, `${me.name} reveals ${flowersAdded.length} bonus tile(s).`]
         : state.log,
   };
+  if (flowersAdded.length)
+    next = applyAnimalPair(next, state.turnIndex, flowersAdded);
 
   if (player.isHuman) {
     // Human draws then chooses; flag self-draw win + kong availability.
@@ -326,40 +332,91 @@ function removeCopies(hand: TileId[], tile: TileId, n: number): TileId[] {
   return out;
 }
 
+type KongKind = "exposed" | "concealed" | "added";
+
 /**
- * Kong Bonus: when a kong is declared, the konger immediately collects from
- * each opponent (1 tai for an exposed/added kong, 2 tai for a concealed kong;
- * dealer involvement doubles that share). This is separate from the win tai.
+ * Kong Bonus, paid immediately when the kong is declared (rate = base $/tai):
+ *   - exposed (off a discard): the discarder alone pays 3 * rate.
+ *   - concealed (silent, self-drawn quad): every other player pays 2 * rate.
+ *   - added (drawn 4th onto a melded pong): every other player pays 1 * rate.
  */
 function applyKongBonus(
   state: GameState,
   kongerIndex: number,
-  concealed: boolean
+  kind: KongKind,
+  discarderIndex?: number
 ): GameState {
   if (!state.rules.kongBonus) return state;
+  const rate = state.rules.payoutRate;
   const players = state.players.map((p) => ({ ...p }));
-  const base = state.rules.payoutRate * (concealed ? 2 : 1);
+  const round = (x: number) => Math.round(x * 100) / 100;
   let collected = 0;
-  for (let j = 0; j < players.length; j++) {
-    if (j === kongerIndex) continue;
-    const dealerInvolved = kongerIndex === 0 || j === 0;
-    const amt = Math.round(base * (dealerInvolved ? 2 : 1) * 100) / 100;
-    players[j].stack = Math.round((players[j].stack - amt) * 100) / 100;
-    collected += amt;
+
+  if (kind === "exposed" && discarderIndex !== undefined) {
+    const amt = round(3 * rate);
+    players[discarderIndex].stack = round(players[discarderIndex].stack - amt);
+    collected = amt;
+  } else {
+    const per = (kind === "concealed" ? 2 : 1) * rate;
+    for (let j = 0; j < players.length; j++) {
+      if (j === kongerIndex) continue;
+      const amt = round(per);
+      players[j].stack = round(players[j].stack - amt);
+      collected += amt;
+    }
   }
-  players[kongerIndex].stack =
-    Math.round((players[kongerIndex].stack + collected) * 100) / 100;
+  players[kongerIndex].stack = round(players[kongerIndex].stack + collected);
   const humanDelta =
     players[state.humanIndex].stack - state.players[state.humanIndex].stack;
   return {
     ...state,
     players,
-    pnl: Math.round((state.pnl + humanDelta) * 100) / 100,
-    log: [
-      ...state.log,
-      `${players[kongerIndex].name} collects the kong bonus.`,
-    ],
+    pnl: round(state.pnl + humanDelta),
+    log: [...state.log, `${players[kongerIndex].name} collects the kong bonus.`],
   };
+}
+
+/**
+ * Animal pair bonus: completing cat+rat or rooster+centipede pays 1 * rate from
+ * every other player, immediately, when the second tile is revealed.
+ */
+function applyAnimalPair(
+  state: GameState,
+  playerIndex: number,
+  added: TileId[]
+): GameState {
+  if (!state.rules.animalTiles) return state;
+  const flowers = state.players[playerIndex].flowers;
+  const has = (t: TileId) => flowers.includes(t);
+  const pairs: [TileId, TileId][] = [
+    ["cat", "rat"],
+    ["rooster", "centipede"],
+  ];
+  let s = state;
+  for (const [a, b] of pairs) {
+    const justCompleted =
+      has(a) && has(b) && (added.includes(a) || added.includes(b));
+    if (!justCompleted) continue;
+    const rate = s.rules.payoutRate;
+    const players = s.players.map((p) => ({ ...p }));
+    const round = (x: number) => Math.round(x * 100) / 100;
+    let collected = 0;
+    for (let j = 0; j < players.length; j++) {
+      if (j === playerIndex) continue;
+      players[j].stack = round(players[j].stack - rate);
+      collected += rate;
+    }
+    players[playerIndex].stack = round(players[playerIndex].stack + collected);
+    const humanDelta =
+      players[s.humanIndex].stack - s.players[s.humanIndex].stack;
+    s = {
+      ...s,
+      players,
+      pnl: round(s.pnl + humanDelta),
+      log: [...s.log, `${players[playerIndex].name} collects an animal pair.`],
+    };
+  }
+  return s;
 }
 
 /** Draw the kong replacement tile, then continue (win / discard / choose). */
@@ -374,7 +431,7 @@ function afterKongDraw(state: GameState, index: number): GameState {
   const me = players[index];
   me.hand = [...me.hand, repl];
   if (flowersAdded.length) me.flowers = [...me.flowers, ...flowersAdded];
-  const s: GameState = {
+  let s: GameState = {
     ...state,
     players,
     wall,
@@ -382,6 +439,7 @@ function afterKongDraw(state: GameState, index: number): GameState {
     claim: null,
     pendingKong: null,
   };
+  if (flowersAdded.length) s = applyAnimalPair(s, index, flowersAdded);
   if (me.isHuman) {
     return {
       ...s,
@@ -414,7 +472,7 @@ function completeConcealedKong(
       log: [...state.log, `${me.name} declares a concealed KONG.`],
     },
     index,
-    true
+    "concealed"
   );
   return afterKongDraw(withBonus, index);
 }
@@ -441,7 +499,7 @@ function completeAddedKong(
       log: [...state.log, `${me.name} declares an added KONG.`],
     },
     index,
-    false
+    "added"
   );
   return afterKongDraw(withBonus, index);
 }
@@ -708,9 +766,12 @@ function applyMeld(
     ],
   };
 
-  // An exposed Kong collects the bonus, then draws a replacement tile.
+  // An exposed Kong off a discard: the discarder pays the bonus.
   if (type === "kong") {
-    return afterKongDraw(applyKongBonus(base, claimerIndex, false), claimerIndex);
+    return afterKongDraw(
+      applyKongBonus(base, claimerIndex, "exposed", discarderIndex),
+      claimerIndex
+    );
   }
 
   if (claimer.isHuman) {
@@ -931,7 +992,7 @@ export function startNextHand(state: GameState): GameState {
     discards: [],
     flowers: dealt.bonusPerPlayer[i],
   }));
-  return {
+  let next: GameState = {
     ...state,
     players,
     wall: dealt.wall,
@@ -949,4 +1010,7 @@ export function startNextHand(state: GameState): GameState {
     exhausted: false,
     log: [...state.log, `— Hand ${state.handNumber + 1} —`],
   };
+  for (let i = 0; i < players.length; i++)
+    next = applyAnimalPair(next, i, next.players[i].flowers);
+  return next;
 }

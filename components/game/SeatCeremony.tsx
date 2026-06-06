@@ -64,6 +64,7 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
   const plan = useRef<{
     dice: number[][];
     totals: number[];
+    rerolls: number[][]; // extra roll totals used to break ties (per roller)
     pickOrder: number[]; // roller indices, highest total first
     rank: number[]; // roller index -> pick position
     windAt: Wind[]; // wind hidden under each face-down tile position
@@ -71,21 +72,41 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
   if (!plan.current) {
     const dice = Array.from({ length: n }, roll3);
     const totals = dice.map((d) => d[0] + d[1] + d[2]);
-    const tie = Array.from({ length: n }, Math.random);
-    const pickOrder = Array.from({ length: n }, (_, i) => i).sort(
-      (a, b) => totals[b] - totals[a] || tie[a] - tie[b]
-    );
+    // Break ties the real way: tied players re-roll among themselves until
+    // their order is decided. keys[i] = [total, reroll1, reroll2, …].
+    const keys: number[][] = totals.map((t) => [t]);
+    for (let guard = 0; guard < 30; guard++) {
+      const groups: Record<string, number[]> = {};
+      for (let i = 0; i < n; i++) (groups[keys[i].join(",")] ??= []).push(i);
+      const tied = Object.values(groups).filter((g) => g.length > 1);
+      if (tied.length === 0) break;
+      for (const g of tied)
+        for (const i of g) keys[i].push(roll3().reduce((a, b) => a + b, 0));
+    }
+    const cmp = (a: number, b: number) => {
+      const ka = keys[a];
+      const kb = keys[b];
+      for (let d = 0; d < Math.max(ka.length, kb.length); d++) {
+        const va = ka[d] ?? 0;
+        const vb = kb[d] ?? 0;
+        if (va !== vb) return vb - va; // higher first
+      }
+      return 0;
+    };
+    const pickOrder = Array.from({ length: n }, (_, i) => i).sort(cmp);
     const rank: number[] = new Array(n).fill(0);
     pickOrder.forEach((r, pos) => (rank[r] = pos));
     plan.current = {
       dice,
       totals,
+      rerolls: keys.map((k) => k.slice(1)),
       pickOrder,
       rank,
       windAt: shuffle(WINDS.slice(0, n)),
     };
   }
-  const { dice, totals, pickOrder, rank, windAt } = plan.current;
+  const { dice, totals, rerolls, pickOrder, rank, windAt } = plan.current;
+  const hadTie = rerolls.some((r) => r.length > 0);
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [rolledCount, setRolledCount] = useState(0);
@@ -227,6 +248,14 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
               <div className="w-7 text-center text-base font-bold text-[var(--text-primary)]">
                 {hasRolled ? totals[i] : ""}
               </div>
+              {/* tie re-roll value(s) */}
+              <div className="w-12 text-center text-[10px] font-semibold text-[#e8a59d]">
+                {phase !== "ready" &&
+                phase !== "rolling" &&
+                rerolls[i].length > 0
+                  ? `↻ ${rerolls[i].join("/")}`
+                  : ""}
+              </div>
               <div className="ml-auto text-right text-[11px] font-bold text-[var(--accent-gold)]">
                 {phase !== "ready" && phase !== "rolling" ? `#${rank[i] + 1}` : ""}
               </div>
@@ -234,6 +263,12 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
           );
         })}
       </div>
+
+      {hadTie && phase !== "ready" && phase !== "rolling" && (
+        <p className="mt-2 text-[11px] text-[#e8a59d]">
+          平手重掷 · ties broken by a re-roll (↻)
+        </p>
+      )}
 
       {/* Tile pool */}
       {(phase === "picking" || phase === "revealing" || phase === "done") && (

@@ -74,11 +74,10 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   const breakdown: { label: string; tai: number }[] = [];
   let limit = false;
 
-  // Note: the Kong Bonus is paid immediately when the kong is declared (see
-  // applyKongBonus in gameState) — it is NOT extra tai on the winning hand.
-  const addBonus = (withSelfDraw = true) => {
-    if (withSelfDraw && selfDraw)
-      breakdown.push({ label: "Self-draw 自摸", tai: 1 });
+  // Kong bonus and the animal-pair bonus are paid immediately (see gameState),
+  // not as winning-hand tai. Self-draw adds NO tai — its reward comes from the
+  // payment structure (everyone pays) rather than extra points.
+  const addBonus = () => {
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
 
@@ -104,7 +103,8 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
         breakdown.push({ label: "All 4 seasons 一台花", tai: 1 });
     }
 
-    // Animals — 1 tai each, plus the predator/prey pair bonuses.
+    // Animals — 1 tai each. The cat+rat / rooster+centipede pair bonuses are
+    // paid immediately when completed (see applyAnimalPair in gameState).
     if (rules.animalTiles) {
       const animals = bonusTiles.filter(isAnimal);
       for (const a of animals)
@@ -116,10 +116,6 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
           }`,
           tai: 1,
         });
-      if (animals.includes("cat") && animals.includes("rat"))
-        breakdown.push({ label: "Cat & Rat 猫捉老鼠", tai: 1 });
-      if (animals.includes("rooster") && animals.includes("centipede"))
-        breakdown.push({ label: "Rooster & Centipede 鸡食蜈蚣", tai: 1 });
     }
   };
 
@@ -132,7 +128,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     } else if (isSevenPairs(concealedTiles, melds)) {
       // 2 tai off a discard, 4 tai self-draw (zimo already includes self-draw).
       breakdown.push({ label: "Seven Pairs 七对子", tai: selfDraw ? 4 : 2 });
-      addBonus(false);
+      addBonus();
     } else {
       addBonus();
     }
@@ -247,9 +243,11 @@ function finalize(
 }
 
 /**
- * Compute per-player dollar payments. Winner collects `tai * rate` from each
- * loser. On a discard win, the discarder pays for everyone; dealer involvement
- * doubles that player's share.
+ * Compute per-player dollar payments on a Singapore doubling scale (uniform —
+ * the dealer is not doubled).
+ *   unit = rate * 2^tai          (e.g. rate $0.20: 1 tai $0.40, 2 tai $0.80…)
+ *   - Self-draw: every other player pays `unit`.
+ *   - Discard / robbed win: only the feeder pays, and pays `2 * unit`.
  */
 export function computePayments(opts: {
   playerCount: number;
@@ -259,25 +257,22 @@ export function computePayments(opts: {
   tai: number;
   rate: number;
 }): number[] {
-  const { playerCount, winnerIndex, dealerIndex, discarderIndex, tai, rate } =
-    opts;
-  const base = tai * rate;
+  const { playerCount, winnerIndex, discarderIndex, tai, rate } = opts;
+  const unit = rate * Math.pow(2, tai);
   const payments = new Array(playerCount).fill(0);
-
-  const multiplier = (idx: number) =>
-    idx === dealerIndex || winnerIndex === dealerIndex ? 2 : 1;
+  const round = (x: number) => Math.round(x * 100) / 100;
 
   if (discarderIndex === null) {
-    // Self-draw: everyone pays.
+    // Self-draw: every other player pays one unit.
     for (let i = 0; i < playerCount; i++) {
       if (i === winnerIndex) continue;
-      const amt = base * multiplier(i);
+      const amt = round(unit);
       payments[i] -= amt;
       payments[winnerIndex] += amt;
     }
   } else {
-    // Discard / robbed win: the feeder pays the table (3 shares).
-    const amt = base * 3 * multiplier(discarderIndex);
+    // Discard / robbed win: only the feeder pays, double a unit.
+    const amt = round(2 * unit);
     payments[discarderIndex] -= amt;
     payments[winnerIndex] += amt;
   }
