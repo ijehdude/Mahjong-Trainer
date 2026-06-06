@@ -38,23 +38,34 @@ export function BirdIllustration() {
 export function CatIllustration() {
   return (
     <g>
-      <path d="M26 41 q7 -2 4.5 -11 q-1.5 -4 -4 -2.5 q3 4.5 0.5 8.5 q-2 3.5 -4 3.5 z" fill={GREY} />
-      <path d="M11.5 44 Q9.5 27 18 24.5 Q26.5 27 24.5 44 Z" fill={GREY} />
-      <circle cx="18" cy="18" r="7" fill={GREY} />
-      <path d="M11 14 L9.5 5.5 L16 11.5 Z" fill={GREY} />
-      <path d="M25 14 L26.5 5.5 L20 11.5 Z" fill={GREY} />
-      <path d="M12 12 L11.3 8.5 L14.3 11 Z" fill={PINK} />
-      <path d="M24 12 L24.7 8.5 L21.7 11 Z" fill={PINK} />
-      <ellipse cx="15" cy="17.5" rx="1.4" ry="2.1" fill={GREEN} />
-      <ellipse cx="21" cy="17.5" rx="1.4" ry="2.1" fill={GREEN} />
-      <circle cx="15" cy="18" r="0.7" fill={INK} />
-      <circle cx="21" cy="18" r="0.7" fill={INK} />
-      <path d="M16.7 21 L19.3 21 L18 22.6 Z" fill={PINK} />
-      <g stroke={GREY_D} strokeWidth="0.5" strokeLinecap="round">
-        <line x1="13" y1="21" x2="6.5" y2="20" />
-        <line x1="13" y1="22.4" x2="6.5" y2="23.4" />
-        <line x1="23" y1="21" x2="29.5" y2="20" />
-        <line x1="23" y1="22.4" x2="29.5" y2="23.4" />
+      {/* red curled tail */}
+      <path d="M26 41 q8 -3 4.5 -13 q-2 -4 -4.5 -1.5 q3.5 5 0.5 9.5 q-2 3.5 -4 3.5 z" fill={RED} />
+      {/* green arched body */}
+      <path d="M11 44 Q9 26 18 24 Q27 26 25 44 Z" fill={GREEN} />
+      <g stroke="#155f3c" strokeWidth="0.9">
+        <path d="M13 33 h10" />
+        <path d="M12.5 38 h11" />
+      </g>
+      {/* red legs */}
+      <g stroke={RED} strokeWidth="2.2" strokeLinecap="round">
+        <path d="M13 43 v2.5" />
+        <path d="M23 43 v2.5" />
+      </g>
+      {/* blue head */}
+      <circle cx="18" cy="17" r="6.6" fill={BLUE} />
+      <path d="M12 13 L10.8 5.5 L16.5 11 Z" fill={BLUE} />
+      <path d="M24 13 L25.2 5.5 L19.5 11 Z" fill={BLUE} />
+      <path d="M13 11.5 L12.4 8 L15 10.5 Z" fill={PINK} />
+      <path d="M23 11.5 L23.6 8 L21 10.5 Z" fill={PINK} />
+      {/* eyes + nose */}
+      <circle cx="15.4" cy="17" r="1.4" fill={YELLOW} />
+      <circle cx="20.6" cy="17" r="1.4" fill={YELLOW} />
+      <circle cx="15.4" cy="17" r="0.6" fill={INK} />
+      <circle cx="20.6" cy="17" r="0.6" fill={INK} />
+      <path d="M16.8 20 L19.2 20 L18 21.5 Z" fill={RED} />
+      <g stroke={GREY_D} strokeWidth="0.4" strokeLinecap="round">
+        <line x1="14" y1="20" x2="8" y2="19" />
+        <line x1="22" y1="20" x2="28" y2="19" />
       </g>
     </g>
   );
@@ -63,18 +74,24 @@ export function CatIllustration() {
 export function RatIllustration() {
   return (
     <g>
-      <path d="M24 38 q11 1 7 -11" fill="none" stroke={PINK} strokeWidth="1.3" strokeLinecap="round" />
-      <ellipse cx="18" cy="33" rx="10.5" ry="7.5" fill={GREY} />
-      <ellipse cx="10" cy="27" rx="6.2" ry="5.2" fill={GREY} />
-      <circle cx="9.5" cy="20.5" r="3.6" fill={GREY} />
-      <circle cx="9.5" cy="20.5" r="1.8" fill={PINK} />
-      <circle cx="4.6" cy="28" r="1.4" fill={PINK} />
-      <circle cx="8" cy="26" r="1.2" fill={INK} />
+      {/* green curled tail */}
+      <path d="M24 36 q12 2 7 -13" fill="none" stroke={GREEN} strokeWidth="1.7" strokeLinecap="round" />
+      {/* red body */}
+      <ellipse cx="17.5" cy="33" rx="10.5" ry="7.5" fill={RED} />
+      {/* blue head */}
+      <ellipse cx="9.5" cy="27" rx="6.3" ry="5.2" fill={BLUE} />
+      <circle cx="9" cy="20.5" r="3.6" fill={BLUE} />
+      <circle cx="9" cy="20.5" r="1.7" fill={PINK} />
+      <circle cx="4.3" cy="28" r="1.4" fill={PINK} />
+      <circle cx="7.6" cy="26" r="1.1" fill={INK} />
       <g stroke={GREY_D} strokeWidth="0.4" strokeLinecap="round">
-        <line x1="5" y1="29" x2="0.5" y2="30" />
-        <line x1="5" y1="30" x2="0.5" y2="32" />
+        <line x1="4.5" y1="29" x2="0" y2="30" />
+        <line x1="4.5" y1="30" x2="0" y2="32" />
       </g>
-      <path d="M15 40 l-1 3 M22 40 l1 3" stroke={PINK} strokeWidth="1" strokeLinecap="round" />
+      <g stroke={GREEN} strokeWidth="1" strokeLinecap="round">
+        <path d="M14 40 l-1 3" />
+        <path d="M22 40 l1 3" />
+      </g>
     </g>
   );
 }
@@ -82,22 +99,27 @@ export function RatIllustration() {
 export function RoosterIllustration() {
   return (
     <g>
-      <path d="M25 35 Q35 31 33 16 Q29 26 24 28 Z" fill={GREEN} />
-      <path d="M26 36 Q34 35 35 25 Q31 31 26 31 Z" fill={BLUE} />
-      <ellipse cx="17" cy="30" rx="8.2" ry="7.2" fill={ORANGE} />
-      <path d="M10 30 Q9 38 14 41 Q16 34 15.5 30 Z" fill={YELLOW} />
-      <circle cx="12" cy="20" r="4.6" fill={ORANGE} />
-      <path d="M8.5 15.5 q1 -3.2 2 0 q1 -3.2 2 0 q1 -3.2 2 0 v3 h-6 z" fill={RED} />
-      <path d="M7 20 L2 21 L7 22.6 Z" fill={YELLOW} />
-      <path d="M9 23 q-1.2 3.2 1 4.4 q2.2 -1.2 1 -4.4 z" fill={RED} />
+      {/* green + blue sickle tail */}
+      <path d="M25 34 Q36 30 32 13 Q30 25 24 28 Z" fill={GREEN} />
+      <path d="M26 36 Q35 35 35 23 Q31 31 26 31 Z" fill={BLUE} />
+      {/* red body, orange breast */}
+      <ellipse cx="17" cy="30" rx="8.2" ry="7.2" fill={RED} />
+      <path d="M10 30 Q9 39 14.5 41.5 Q16.5 34 15.5 30 Z" fill={ORANGE} />
+      {/* red head + comb + wattle */}
+      <circle cx="12" cy="20" r="4.7" fill={RED} />
+      <path d="M8.4 15.5 q1 -3.2 2 0 q1 -3.2 2 0 q1 -3.2 2 0 v3 h-6 z" fill={RED} />
+      <path d="M6.8 20 L1.6 21 L6.8 22.7 Z" fill={YELLOW} />
+      <path d="M9 23 q-1.2 3.4 1 4.6 q2.2 -1.2 1 -4.6 z" fill={RED} />
       <circle cx="12" cy="19" r="1.1" fill={INK} />
-      <g stroke={YELLOW} strokeWidth="1.2" strokeLinecap="round">
-        <path d="M15 37 l0 5" />
-        <path d="M19 37 l0 5" />
+      <circle cx="12.3" cy="18.6" r="0.4" fill="#fff" />
+      {/* yellow legs + feet */}
+      <g stroke={YELLOW} strokeWidth="1.3" strokeLinecap="round">
+        <path d="M15 37 v5.5" />
+        <path d="M19 37 v5.5" />
       </g>
       <g stroke={YELLOW} strokeWidth="0.8" strokeLinecap="round">
-        <path d="M15 42 l-2 1.5 M15 42 l2 1.5" />
-        <path d="M19 42 l-2 1.5 M19 42 l2 1.5" />
+        <path d="M15 42.5 l-2 1.6 M15 42.5 l2 1.6" />
+        <path d="M19 42.5 l-2 1.6 M19 42.5 l2 1.6" />
       </g>
     </g>
   );
@@ -106,6 +128,16 @@ export function RoosterIllustration() {
 export function CentipedeIllustration() {
   return (
     <g>
+      {/* green legs first (behind body) */}
+      <g stroke={GREEN} strokeWidth="1.3" strokeLinecap="round">
+        <path d="M15 13 l-4 -2.5 M21 13 l4 -2.5" />
+        <path d="M21.5 18 l4 -1 M14.5 18 l-4 -1" />
+        <path d="M14 23 l-4 1 M22 23 l4 -1" />
+        <path d="M21.5 29 l4 1 M14.5 29 l-4 -1" />
+        <path d="M14 34 l-4 1 M22 34 l4 1" />
+        <path d="M15.5 39 l-3.5 2 M20.5 39 l3.5 2" />
+      </g>
+      {/* red segmented body */}
       <path
         d="M18 10 C24 15, 12 19, 18 25 C24 31, 12 35, 18 41"
         fill="none"
@@ -113,16 +145,9 @@ export function CentipedeIllustration() {
         strokeWidth="5.5"
         strokeLinecap="round"
       />
-      <g stroke="#8a2820" strokeWidth="1" strokeLinecap="round">
-        <path d="M15 13 l-3.5 -2 M21 13 l3.5 -2" />
-        <path d="M21 18 l3.5 -1 M15 18 l-3.5 -1" />
-        <path d="M14.5 23 l-3.5 1 M21.5 23 l3.5 -1" />
-        <path d="M21 29 l3.5 1 M15 29 l-3.5 -1" />
-        <path d="M14.5 34 l-3.5 1 M21.5 34 l3.5 1" />
-        <path d="M16 39 l-3 2 M20 39 l3 2" />
-      </g>
-      <circle cx="18" cy="9.5" r="3.6" fill="#8a2820" />
-      <path d="M16 6.5 l-2 -3.5 M20 6.5 l2 -3.5" stroke="#8a2820" strokeWidth="1" strokeLinecap="round" />
+      {/* head + antennae */}
+      <circle cx="18" cy="9.5" r="3.7" fill={RED} />
+      <path d="M16 6.3 l-2 -3.5 M20 6.3 l2 -3.5" stroke={GREEN} strokeWidth="1" strokeLinecap="round" />
       <circle cx="16.7" cy="9" r="0.7" fill="#fff" />
       <circle cx="19.3" cy="9" r="0.7" fill="#fff" />
     </g>
@@ -226,75 +251,71 @@ export function FlowerIllustration({ bonus }: { bonus: number }) {
   }
 }
 
-/* ---- Seasons (1 春 / 2 夏 / 3 秋 / 4 冬) ---------------------------------- */
+/* ---- Seasons (1 春 / 2 夏 / 3 秋 / 4 冬) — botanical, like real tiles ----- */
 export function SeasonIllustration({ bonus }: { bonus: number }) {
   switch (bonus) {
-    case 1: // spring — sprout
+    case 1: // spring — orchid shoots
       return (
         <g>
-          <path d="M18 44 L18 22" stroke={GREEN} strokeWidth="2" strokeLinecap="round" />
-          <path d="M18 30 Q8 28 7 18 Q17 20 18 28 Z" fill={GREEN} />
-          <path d="M18 26 Q28 24 29 14 Q19 16 18 24 Z" fill="#2c9a63" />
-          <circle cx="18" cy="14" r="3" fill={PINK} />
-        </g>
-      );
-    case 2: // summer — sun
-      return (
-        <g>
-          <g stroke={ORANGE} strokeWidth="1.6" strokeLinecap="round">
-            {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
-              const rad = (a * Math.PI) / 180;
-              return (
-                <line
-                  key={a}
-                  x1={18 + Math.cos(rad) * 9}
-                  y1={24 + Math.sin(rad) * 9}
-                  x2={18 + Math.cos(rad) * 13}
-                  y2={24 + Math.sin(rad) * 13}
-                />
-              );
-            })}
+          <g fill="none" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round">
+            <path d="M15 44 Q6 30 11 13" />
+            <path d="M18 44 Q18 27 18 11" />
+            <path d="M21 44 Q30 30 25 14" />
           </g>
-          <circle cx="18" cy="24" r="8" fill={YELLOW} />
-          <circle cx="18" cy="24" r="8" fill="none" stroke={ORANGE} strokeWidth="1" />
+          <Blossom cx={18} cy={20} r={3} fill={PINK} />
         </g>
       );
-    case 3: // autumn — maple leaf
+    case 2: // summer — lotus
       return (
         <g>
-          <path d="M18 44 L18 32" stroke={BROWN} strokeWidth="1.4" strokeLinecap="round" />
-          <path
-            d="M18 8 L21 16 L27 14 L23 21 L29 24 L22 25 L24 33 L18 28 L12 33 L14 25 L7 24 L13 21 L9 14 L15 16 Z"
-            fill={ORANGE}
-          />
-          <path d="M18 12 L18 30" stroke="#a8531f" strokeWidth="0.8" />
-        </g>
-      );
-    default: // winter — snowflake
-      return (
-        <g stroke={BLUE} strokeWidth="1.5" strokeLinecap="round" fill="none">
-          {[0, 60, 120].map((a) => {
+          <path d="M18 42 L18 28" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round" />
+          <ellipse cx="10" cy="40" rx="7" ry="2.4" fill={GREEN} />
+          <ellipse cx="26" cy="40" rx="6" ry="2.2" fill="#2c9a63" />
+          {[-26, -9, 9, 26].map((a) => {
             const rad = (a * Math.PI) / 180;
-            const dx = Math.cos(rad) * 13;
-            const dy = Math.sin(rad) * 13;
-            return <line key={a} x1={18 - dx} y1={24 - dy} x2={18 + dx} y2={24 + dy} />;
-          })}
-          {[0, 60, 120, 180, 240, 300].map((a) => {
-            const rad = (a * Math.PI) / 180;
-            const bx = 18 + Math.cos(rad) * 8;
-            const by = 24 + Math.sin(rad) * 8;
-            const ex = 18 + Math.cos(rad) * 13;
-            const ey = 24 + Math.sin(rad) * 13;
-            const pr = ((a + 35) * Math.PI) / 180;
-            const pr2 = ((a - 35) * Math.PI) / 180;
             return (
-              <g key={a}>
-                <line x1={bx} y1={by} x2={bx + Math.cos(pr) * 3} y2={by + Math.sin(pr) * 3} />
-                <line x1={bx} y1={by} x2={bx + Math.cos(pr2) * 3} y2={by + Math.sin(pr2) * 3} />
-                <circle cx={ex} cy={ey} r="0.4" fill={BLUE} />
-              </g>
+              <path
+                key={a}
+                d="M18 26 q-3 -8 0 -14 q3 6 0 14 z"
+                fill={PINK}
+                transform={`rotate(${a} 18 26)`}
+              />
             );
           })}
+          <path d="M18 26 q-2 -6 0 -11 q2 5 0 11 z" fill="#e07aa8" />
+          <circle cx="18" cy="20" r="2" fill={YELLOW} />
+        </g>
+      );
+    case 3: // autumn — chrysanthemum
+      return (
+        <g>
+          <path d="M18 30 L18 44" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M18 38 Q12 36 10 31 Q16 33 18 37 Z" fill={GREEN} />
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((a) => {
+            const rad = (a * Math.PI) / 180;
+            return (
+              <ellipse
+                key={a}
+                cx={18 + Math.cos(rad) * 7}
+                cy={22 + Math.sin(rad) * 7}
+                rx={3.4}
+                ry={1.7}
+                fill={ORANGE}
+                transform={`rotate(${a} ${18 + Math.cos(rad) * 7} ${22 + Math.sin(rad) * 7})`}
+              />
+            );
+          })}
+          <circle cx="18" cy="22" r="3.2" fill={YELLOW} />
+        </g>
+      );
+    default: // winter — plum blossom on a bare twig
+      return (
+        <g>
+          <path d="M10 44 Q15 30 25 15" fill="none" stroke={BROWN} strokeWidth="2" strokeLinecap="round" />
+          <path d="M15 30 L21 26" stroke={BROWN} strokeWidth="1.3" strokeLinecap="round" />
+          <Blossom cx={25} cy={14} r={3.3} fill="#dfe7f2" />
+          <Blossom cx={20} cy={25} r={2.8} fill="#cfe0f0" />
+          <Blossom cx={12} cy={37} r={2.6} fill="#dfe7f2" />
         </g>
       );
   }

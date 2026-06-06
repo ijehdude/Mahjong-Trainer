@@ -104,16 +104,18 @@ function Stick({
   w,
   h,
   red,
+  angle = 0,
 }: {
   cx: number;
   cy: number;
   w: number;
   h: number;
   red?: boolean;
+  angle?: number;
 }) {
   const color = red ? RED : GREEN;
   return (
-    <g>
+    <g transform={angle ? `rotate(${angle} ${cx} ${cy})` : undefined}>
       <rect
         x={cx - w / 2}
         y={cy - h / 2}
@@ -156,6 +158,27 @@ function Stick({
 
 function BambooFace({ n }: { n: number }) {
   if (n === 1) return <BirdIllustration />;
+  // 8 bamboo: two "M" clusters (four sticks each, zig-zag tilt).
+  if (n === 8) {
+    const xs = [10, 15.5, 21, 26.5];
+    const angles = [-18, 18, -18, 18];
+    return (
+      <g>
+        {[14, 36].map((cy, ci) =>
+          xs.map((x, i) => (
+            <Stick
+              key={ci * 4 + i}
+              cx={x}
+              cy={cy}
+              w={4}
+              h={13}
+              angle={angles[i]}
+            />
+          ))
+        )}
+      </g>
+    );
+  }
   const positions = BAMBOO_POS[n];
   const threeRow = n >= 9;
   const h = threeRow ? 11 : n >= 6 ? 13 : 15;
@@ -266,12 +289,26 @@ function BonusFace({ tile }: { tile: Tile }) {
   const isFlower = tile.category === "flower";
   return (
     <g>
-      {isFlower ? (
-        <FlowerIllustration bonus={tile.bonus ?? 1} />
-      ) : (
-        <SeasonIllustration bonus={tile.bonus ?? 1} />
-      )}
+      {/* illustration sits in the upper region, character labels the bottom */}
+      <g transform="translate(3.6 -3) scale(0.8)">
+        {isFlower ? (
+          <FlowerIllustration bonus={tile.bonus ?? 1} />
+        ) : (
+          <SeasonIllustration bonus={tile.bonus ?? 1} />
+        )}
+      </g>
       <NumberBadge n={tile.bonus ?? 1} color={isFlower ? BLUE : ORANGE} />
+      <text
+        x={18}
+        y={47}
+        textAnchor="middle"
+        fontFamily={SERIF}
+        fontSize={9}
+        fontWeight={700}
+        fill={isFlower ? GREEN : ORANGE}
+      >
+        {tile.label}
+      </text>
     </g>
   );
 }
