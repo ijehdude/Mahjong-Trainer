@@ -1,4 +1,4 @@
-import { DRAGONS, FLOWERS, SEASONS, SUITS, WINDS } from "@/types/tiles";
+import { ANIMALS, DRAGONS, FLOWERS, SEASONS, SUITS, WINDS } from "@/types/tiles";
 import type { TileId } from "@/types/tiles";
 import { isBonus } from "./tiles";
 
@@ -7,8 +7,14 @@ import { isBonus } from "./tiles";
    136 base tiles (34 types x 4) + 8 bonus tiles when flowers enabled = 144.
    =========================================================================== */
 
-/** Build a full deck. Bonus tiles (flowers/seasons) included only when enabled. */
-export function buildDeck(includeFlowers: boolean): TileId[] {
+/**
+ * Build a full deck. Flowers/seasons are included when `includeFlowers`, and the
+ * four animal bonus tiles when `includeAnimals`. All bonus tiles are unique.
+ */
+export function buildDeck(
+  includeFlowers: boolean,
+  includeAnimals: boolean
+): TileId[] {
   const deck: TileId[] = [];
   for (const suit of SUITS) {
     for (let rank = 1; rank <= 9; rank++) {
@@ -18,9 +24,11 @@ export function buildDeck(includeFlowers: boolean): TileId[] {
   for (const wind of WINDS) for (let c = 0; c < 4; c++) deck.push(wind);
   for (const dragon of DRAGONS) for (let c = 0; c < 4; c++) deck.push(dragon);
   if (includeFlowers) {
-    // Flowers and seasons are unique (one of each)
     for (const f of FLOWERS) deck.push(f);
     for (const s of SEASONS) deck.push(s);
+  }
+  if (includeAnimals) {
+    for (const a of ANIMALS) deck.push(a);
   }
   return deck;
 }

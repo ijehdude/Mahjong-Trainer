@@ -11,13 +11,15 @@ export type Wind = "east" | "south" | "west" | "north"; // 东南西北
 export type Dragon = "zhong" | "fa" | "bai"; // 中 发 白
 export type FlowerId = "f1" | "f2" | "f3" | "f4"; // 梅兰竹菊
 export type SeasonId = "s1" | "s2" | "s3" | "s4"; // 春夏秋冬
+export type AnimalId = "cat" | "rat" | "rooster" | "centipede"; // 猫鼠鸡蜈蚣
 
 export type TileCategory =
   | "suit"
   | "wind"
   | "dragon"
   | "flower"
-  | "season";
+  | "season"
+  | "animal";
 
 export type TileId = string;
 
@@ -35,7 +37,7 @@ export interface Tile {
   /** Glyph shown on the tile face (Chinese character or pip count handled in UI). */
   label: string;
   /** Color treatment for the face. */
-  color: "red" | "green" | "blue" | "ink" | "pink" | "orange";
+  color: "red" | "green" | "blue" | "ink" | "pink" | "orange" | "teal";
 }
 
 export const SUITS: Suit[] = ["wan", "tong", "bam"];
@@ -43,6 +45,21 @@ export const WINDS: Wind[] = ["east", "south", "west", "north"];
 export const DRAGONS: Dragon[] = ["zhong", "fa", "bai"];
 export const FLOWERS: FlowerId[] = ["f1", "f2", "f3", "f4"];
 export const SEASONS: SeasonId[] = ["s1", "s2", "s3", "s4"];
+export const ANIMALS: AnimalId[] = ["cat", "rat", "rooster", "centipede"];
+
+export const ANIMAL_LABEL: Record<AnimalId, string> = {
+  cat: "猫",
+  rat: "鼠",
+  rooster: "鸡",
+  centipede: "蜈",
+};
+
+export const ANIMAL_NAME: Record<AnimalId, string> = {
+  cat: "Cat",
+  rat: "Rat",
+  rooster: "Rooster",
+  centipede: "Centipede",
+};
 
 export const WIND_LABEL: Record<Wind, string> = {
   east: "东",

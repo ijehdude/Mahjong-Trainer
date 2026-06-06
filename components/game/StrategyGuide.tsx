@@ -21,6 +21,8 @@ const TAI_TABLE: { feature: string; tai: string }[] = [
   { feature: "自摸 Self-draw", tai: "+1" },
   { feature: "抢杠 Robbing the kong", tai: "+1" },
   { feature: "花 / 季 Flower / Season", tai: "+1 每" },
+  { feature: "动物 Animal (猫鼠鸡蜈)", tai: "+1 每" },
+  { feature: "猫捉老鼠 / 鸡食蜈蚣 pair", tai: "+1" },
   { feature: "杠 Kong", tai: "即时赔付 bonus" },
   { feature: "封顶 Limit cap", tai: "5 台" },
 ];

@@ -1,4 +1,7 @@
 import {
+  ANIMAL_LABEL,
+  ANIMAL_NAME,
+  ANIMALS,
   CN_NUMERALS,
   DRAGON_LABEL,
   DRAGONS,
@@ -82,6 +85,14 @@ export function makeTile(id: TileId): Tile {
       color: "orange",
     };
   }
+  if ((ANIMALS as string[]).includes(id)) {
+    return {
+      id,
+      category: "animal",
+      label: ANIMAL_LABEL[id as keyof typeof ANIMAL_LABEL],
+      color: "teal",
+    };
+  }
   // Fallback (should never happen)
   return { id, category: "suit", label: "?", color: "ink" };
 }
@@ -96,10 +107,16 @@ export function isHonor(id: TileId): boolean {
   );
 }
 
+export function isAnimal(id: TileId): boolean {
+  return (ANIMALS as string[]).includes(id);
+}
+
+export function isFlowerOrSeason(id: TileId): boolean {
+  return (FLOWERS as string[]).includes(id) || (SEASONS as string[]).includes(id);
+}
+
 export function isBonus(id: TileId): boolean {
-  return (
-    (FLOWERS as string[]).includes(id) || (SEASONS as string[]).includes(id)
-  );
+  return isFlowerOrSeason(id) || isAnimal(id);
 }
 
 export function suitOf(id: TileId): Suit | null {
@@ -130,7 +147,8 @@ export function tileName(id: TileId): string {
     }[t.honor as Dragon];
   }
   if (t.category === "flower") return `Flower ${t.bonus}`;
-  return `Season ${t.bonus}`;
+  if (t.category === "season") return `Season ${t.bonus}`;
+  return ANIMAL_NAME[id as keyof typeof ANIMAL_NAME] ?? id;
 }
 
 /** Stable sort order for display: wan, tong, bam, winds, dragons, bonus. */
@@ -142,6 +160,7 @@ const CATEGORY_ORDER: Record<string, number> = {
   dragon: 4,
   flower: 5,
   season: 6,
+  animal: 7,
 };
 
 function sortKey(id: TileId): number {

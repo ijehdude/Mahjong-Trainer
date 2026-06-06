@@ -29,7 +29,7 @@ const SEAT_WINDS: Wind[] = ["east", "south", "west", "north"];
 
 export function createGame(rules: GameRules): GameState {
   const n = rules.players;
-  const deck = shuffle(buildDeck(rules.flowerTiles));
+  const deck = shuffle(buildDeck(rules.flowerTiles, rules.animalTiles));
   const dealt = deal(deck, n);
 
   // Randomise which seat the human takes. Dealer is always seat 0 (East), so
@@ -721,7 +721,7 @@ function prospectiveWinTai(
     roundWind: state.roundWind,
     selfDraw,
     robKong: false,
-    flowerCount: winner.flowers.length,
+    bonusTiles: winner.flowers,
     rules: state.rules,
   }).tai;
 }
@@ -802,7 +802,7 @@ function computeWin(
     roundWind: state.roundWind,
     selfDraw,
     robKong,
-    flowerCount: winner.flowers.length,
+    bonusTiles: winner.flowers,
     rules: state.rules,
   });
   const tai = result0.tai;
@@ -884,7 +884,7 @@ export function recordDiscardAccuracy(
 
 export function startNextHand(state: GameState): GameState {
   const n = state.rules.players;
-  const deck = shuffle(buildDeck(state.rules.flowerTiles));
+  const deck = shuffle(buildDeck(state.rules.flowerTiles, state.rules.animalTiles));
   const dealt = deal(deck, n);
   const players = state.players.map((p, i) => ({
     ...p,

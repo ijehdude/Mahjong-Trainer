@@ -2,9 +2,9 @@ import type { GameRules } from "@/types/game";
 import type { Meld } from "@/types/game";
 import { LIMIT_TAI } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
-import { DRAGONS, WINDS } from "@/types/tiles";
+import { ANIMAL_NAME, DRAGONS, WINDS } from "@/types/tiles";
 import { Decomposition, isThirteenOrphans } from "./handValidator";
-import { isSuit, suitOf } from "./tiles";
+import { isAnimal, isFlowerOrSeason, isSuit, suitOf } from "./tiles";
 
 /* ===========================================================================
    Singapore tai (points) scoring, including special / limit hands.
@@ -27,7 +27,8 @@ interface ScoreContext {
   roundWind: Wind;
   selfDraw: boolean;
   robKong: boolean;
-  flowerCount: number;
+  /** The winner's revealed bonus tiles (flowers, seasons and animals). */
+  bonusTiles: TileId[];
   rules: GameRules;
 }
 
@@ -59,7 +60,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     roundWind,
     selfDraw,
     robKong,
-    flowerCount,
+    bonusTiles,
     rules,
   } = ctx;
   const breakdown: { label: string; tai: number }[] = [];
@@ -71,13 +72,34 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     if (selfDraw) breakdown.push({ label: "Self-draw 自摸", tai: 1 });
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
-    if (rules.flowerTiles && flowerCount > 0) {
+
+    // Flowers & seasons (fei) — per the fei payout setting.
+    const feiCount = bonusTiles.filter(isFlowerOrSeason).length;
+    if (rules.flowerTiles && feiCount > 0) {
       const per = FEI_TAI[rules.feiPayout];
       if (per > 0)
         breakdown.push({
-          label: `${flowerCount} flower/season 花`,
-          tai: per * flowerCount,
+          label: `${feiCount} flower/season 花`,
+          tai: per * feiCount,
         });
+    }
+
+    // Animals — 1 tai each, plus the predator/prey pair bonuses.
+    if (rules.animalTiles) {
+      const animals = bonusTiles.filter(isAnimal);
+      for (const a of animals)
+        breakdown.push({
+          label: `${ANIMAL_NAME[a as keyof typeof ANIMAL_NAME]} ${
+            { cat: "猫", rat: "鼠", rooster: "鸡", centipede: "蜈" }[
+              a as "cat" | "rat" | "rooster" | "centipede"
+            ]
+          }`,
+          tai: 1,
+        });
+      if (animals.includes("cat") && animals.includes("rat"))
+        breakdown.push({ label: "Cat & Rat 猫捉老鼠", tai: 1 });
+      if (animals.includes("rooster") && animals.includes("centipede"))
+        breakdown.push({ label: "Rooster & Centipede 鸡食蜈蚣", tai: 1 });
     }
   };
 

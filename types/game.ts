@@ -13,6 +13,7 @@ export type CoachEngine = "local" | "ai";
 export interface GameRules {
   players: PlayerCount;
   flowerTiles: boolean;
+  animalTiles: boolean; // 猫鼠鸡蜈蚣 — four animal bonus tiles
   feiPayout: FeiPayout;
   minTai: MinTai;
   payoutRate: number; // dollars per tai
@@ -33,6 +34,7 @@ export const LIMIT_TAI = 5;
 export const DEFAULT_RULES: GameRules = {
   players: 4,
   flowerTiles: true,
+  animalTiles: true,
   feiPayout: "1tai",
   minTai: 1,
   payoutRate: 0.2,

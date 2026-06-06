@@ -288,6 +288,37 @@ function BonusFace({ tile }: { tile: Tile }) {
   );
 }
 
+function AnimalFace({ tile }: { tile: Tile }) {
+  const TEAL = "#1f8a82";
+  return (
+    <g>
+      <text
+        x={18}
+        y={32}
+        textAnchor="middle"
+        fontFamily={SERIF}
+        fontSize={20}
+        fontWeight={700}
+        fill={TEAL}
+      >
+        {tile.label}
+      </text>
+      <text
+        x={18}
+        y={44}
+        textAnchor="middle"
+        fontFamily={SERIF}
+        fontSize={6}
+        fontWeight={700}
+        fill={TEAL}
+        opacity={0.7}
+      >
+        动物
+      </text>
+    </g>
+  );
+}
+
 export default function TileFace({ tile }: { tile: Tile }) {
   let content: React.ReactNode = null;
   if (tile.category === "suit") {
@@ -298,6 +329,8 @@ export default function TileFace({ tile }: { tile: Tile }) {
     content = <WindFace wind={tile.honor as string} />;
   } else if (tile.category === "dragon") {
     content = <DragonFace dragon={tile.honor as string} />;
+  } else if (tile.category === "animal") {
+    content = <AnimalFace tile={tile} />;
   } else {
     content = <BonusFace tile={tile} />;
   }

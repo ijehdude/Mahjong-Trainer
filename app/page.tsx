@@ -80,12 +80,18 @@ export default function SetupPage() {
             </p>
           </SettingsCard>
 
-          <SettingsCard title="花牌（花 / 季）" en="Flowers & Seasons">
+          <SettingsCard title="花牌 / 动物" en="Flowers, Seasons & Animals">
             <ToggleRow
               label="花牌与季牌"
               description="Flower & season tiles — 8 bonus tiles, revealed with a replacement draw."
               checked={rules.flowerTiles}
               onChange={(v) => update("flowerTiles", v)}
+            />
+            <ToggleRow
+              label="动物牌 (猫鼠鸡蜈蚣)"
+              description="Animal tiles — Cat/Rat/Rooster/Centipede. +1 tai each; catching a pair (Cat+Rat or Rooster+Centipede) scores an extra tai."
+              checked={rules.animalTiles}
+              onChange={(v) => update("animalTiles", v)}
             />
             {rules.flowerTiles && (
               <div className="pl-1">
