@@ -1,4 +1,10 @@
 import type { Tile } from "@/types/tiles";
+import {
+  AnimalIllustration,
+  BirdIllustration,
+  FlowerIllustration,
+  SeasonIllustration,
+} from "./TileIllustrations";
 
 /* ===========================================================================
    Realistic SVG tile faces — traditional dot patterns for Circles, segmented
@@ -11,6 +17,7 @@ const RED = "#c0392b";
 const GREEN = "#1f7a4d";
 const BLUE = "#27568f";
 const INK = "#23232f";
+const ORANGE = "#d2792b";
 const FACE = "#f7f3ea";
 const SERIF = "var(--font-noto-serif-sc), serif";
 
@@ -147,31 +154,8 @@ function Stick({
   );
 }
 
-function BambooBird() {
-  // Stylised sparrow (1 bamboo) around centre (18,25).
-  return (
-    <g>
-      {/* tail */}
-      <path d="M19 30 L27 40 L21 33 Z" fill={RED} />
-      {/* body */}
-      <ellipse cx={16} cy={26} rx={7} ry={5.5} fill={GREEN} />
-      {/* wing */}
-      <path d="M12 23 Q18 20 22 26 Q16 27 12 28 Z" fill={BLUE} />
-      {/* head */}
-      <circle cx={13} cy={17} r={4.2} fill={GREEN} />
-      {/* beak */}
-      <path d="M9.5 16 L5 17 L9.5 18.5 Z" fill={RED} />
-      {/* eye */}
-      <circle cx={13} cy={16} r={1} fill={INK} />
-      {/* feet / perch */}
-      <line x1={15} y1={31} x2={15} y2={37} stroke={GREEN} strokeWidth={1.4} />
-      <path d="M15 37 L12 40 M15 37 L18 40" stroke={GREEN} strokeWidth={1.2} fill="none" />
-    </g>
-  );
-}
-
 function BambooFace({ n }: { n: number }) {
-  if (n === 1) return <BambooBird />;
+  if (n === 1) return <BirdIllustration />;
   const positions = BAMBOO_POS[n];
   const threeRow = n >= 9;
   const h = threeRow ? 11 : n >= 6 ? 13 : 15;
@@ -258,69 +242,42 @@ function DragonFace({ dragon }: { dragon: string }) {
   );
 }
 
-function BonusFace({ tile }: { tile: Tile }) {
-  const isFlower = tile.category === "flower";
-  const charColor = isFlower ? GREEN : "#d2792b";
-  const badge = isFlower ? BLUE : RED;
+/** Small numbered badge in the top-left corner (flowers/seasons). */
+function NumberBadge({ n, color }: { n: number; color: string }) {
   return (
     <g>
+      <circle cx={8} cy={9} r={5.5} fill={color} />
       <text
-        x={18}
-        y={32}
+        x={8}
+        y={12}
         textAnchor="middle"
         fontFamily={SERIF}
-        fontSize={22}
-        fontWeight={700}
-        fill={charColor}
-      >
-        {tile.label}
-      </text>
-      {/* number badge */}
-      <circle cx={28} cy={10} r={6} fill={badge} />
-      <text
-        x={28}
-        y={13}
-        textAnchor="middle"
-        fontFamily={SERIF}
-        fontSize={9}
+        fontSize={8}
         fontWeight={700}
         fill="#fff"
       >
-        {tile.bonus}
+        {n}
       </text>
     </g>
   );
 }
 
-function AnimalFace({ tile }: { tile: Tile }) {
-  const TEAL = "#1f8a82";
+function BonusFace({ tile }: { tile: Tile }) {
+  const isFlower = tile.category === "flower";
   return (
     <g>
-      <text
-        x={18}
-        y={32}
-        textAnchor="middle"
-        fontFamily={SERIF}
-        fontSize={20}
-        fontWeight={700}
-        fill={TEAL}
-      >
-        {tile.label}
-      </text>
-      <text
-        x={18}
-        y={44}
-        textAnchor="middle"
-        fontFamily={SERIF}
-        fontSize={6}
-        fontWeight={700}
-        fill={TEAL}
-        opacity={0.7}
-      >
-        动物
-      </text>
+      {isFlower ? (
+        <FlowerIllustration bonus={tile.bonus ?? 1} />
+      ) : (
+        <SeasonIllustration bonus={tile.bonus ?? 1} />
+      )}
+      <NumberBadge n={tile.bonus ?? 1} color={isFlower ? BLUE : ORANGE} />
     </g>
   );
+}
+
+function AnimalFace({ tile }: { tile: Tile }) {
+  return <AnimalIllustration id={tile.id} />;
 }
 
 export default function TileFace({ tile }: { tile: Tile }) {
