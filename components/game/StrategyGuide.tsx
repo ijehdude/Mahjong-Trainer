@@ -28,7 +28,7 @@ const TAI_TABLE: { feature: string; tai: string }[] = [
 ];
 
 const SPECIAL_TABLE: { feature: string; tai: string }[] = [
-  { feature: "七对子 Seven Pairs", tai: "2 台" },
+  { feature: "七对子 Seven Pairs", tai: "2 台 / 自摸 4 台" },
   { feature: "十三幺 Thirteen Orphans", tai: "限制番" },
   { feature: "九莲宝灯 Nine Gates", tai: "限制番" },
   { feature: "大三元 Big Three Dragons", tai: "限制番" },

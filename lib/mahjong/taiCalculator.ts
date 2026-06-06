@@ -76,8 +76,9 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
 
   // Note: the Kong Bonus is paid immediately when the kong is declared (see
   // applyKongBonus in gameState) — it is NOT extra tai on the winning hand.
-  const addBonus = () => {
-    if (selfDraw) breakdown.push({ label: "Self-draw 自摸", tai: 1 });
+  const addBonus = (withSelfDraw = true) => {
+    if (withSelfDraw && selfDraw)
+      breakdown.push({ label: "Self-draw 自摸", tai: 1 });
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
 
@@ -127,10 +128,14 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     if (isThirteenOrphans(concealedTiles, melds)) {
       breakdown.push({ label: "Thirteen Orphans 十三幺", tai: 13 });
       limit = true;
+      addBonus();
     } else if (isSevenPairs(concealedTiles, melds)) {
-      breakdown.push({ label: "Seven Pairs 七对子", tai: 2 });
+      // 2 tai off a discard, 4 tai self-draw (zimo already includes self-draw).
+      breakdown.push({ label: "Seven Pairs 七对子", tai: selfDraw ? 4 : 2 });
+      addBonus(false);
+    } else {
+      addBonus();
     }
-    addBonus();
     return finalize(breakdown, rules, limit);
   }
 
