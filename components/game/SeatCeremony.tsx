@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameRules } from "@/types/game";
 import { WIND_NAME, WINDS } from "@/types/tiles";
 import type { Wind } from "@/types/tiles";
@@ -9,9 +9,9 @@ import TileComponent from "./TileComponent";
 import Button from "@/components/shared/Button";
 
 /* ===========================================================================
-   Interactive seat ceremony. The player clicks to roll three dice, the bots
-   roll in turn, the highest roller picks a face-down wind tile first, and the
-   tiles reveal one by one (player first). Whoever draws East is the dealer.
+   Interactive seat ceremony. The player rolls, the bots roll, then players draw
+   face-down wind tiles in rank order (highest first). The player CHOOSES which
+   face-down tile to take; the drawn wind becomes their seat (East = dealer).
    =========================================================================== */
 
 interface Props {
@@ -19,12 +19,8 @@ interface Props {
   onSeated: (seatIndex: number) => void;
 }
 
-function rollDie() {
-  return 1 + Math.floor(Math.random() * 6);
-}
-function roll3() {
-  return [rollDie(), rollDie(), rollDie()];
-}
+const rollDie = () => 1 + Math.floor(Math.random() * 6);
+const roll3 = () => [rollDie(), rollDie(), rollDie()];
 
 const PIP_LAYOUT: Record<number, number[]> = {
   1: [4],
@@ -39,14 +35,14 @@ function Die({ value, rolling }: { value: number; rolling?: boolean }) {
   const pips = PIP_LAYOUT[value] ?? [];
   return (
     <div
-      className={`grid h-8 w-8 grid-cols-3 grid-rows-3 gap-px rounded-md border border-[#d9d2c2] bg-gradient-to-b from-white to-[#ece5d6] p-1 shadow-[0_1px_0_#cdc3ac,0_2px_4px_rgba(0,0,0,0.4)] ${
+      className={`grid h-7 w-7 grid-cols-3 grid-rows-3 gap-px rounded-md border border-[#d9d2c2] bg-gradient-to-b from-white to-[#ece5d6] p-1 shadow-[0_1px_0_#cdc3ac,0_2px_3px_rgba(0,0,0,0.4)] ${
         rolling ? "animate-[spin_0.5s_linear_infinite]" : "animate-pop-in"
       }`}
     >
       {Array.from({ length: 9 }).map((_, i) => (
         <span
           key={i}
-          className={`m-auto h-1.5 w-1.5 rounded-full ${
+          className={`m-auto h-1 w-1 rounded-full ${
             pips.includes(i)
               ? value === 1 || value === 4
                 ? "bg-[var(--accent-red)]"
@@ -59,95 +55,134 @@ function Die({ value, rolling }: { value: number; rolling?: boolean }) {
   );
 }
 
-interface Roller {
-  isHuman: boolean;
-  dice: number[];
-  total: number;
-  wind: Wind;
-  rank: number; // 0 = picks first (highest)
-}
+type Phase = "ready" | "rolling" | "picking" | "revealing" | "done";
 
 export default function SeatCeremony({ rules, onSeated }: Props) {
   const n = rules.players;
 
-  // Everything is decided up front; the timeline just reveals it gradually.
-  const planRef = useRef<{ rollers: Roller[]; seatIndex: number } | null>(null);
-  if (!planRef.current) {
-    const dice = Array.from({ length: n }, () => roll3());
+  // Fixed up front: each roller's dice, and the hidden wind under each tile.
+  const plan = useRef<{
+    dice: number[][];
+    totals: number[];
+    pickOrder: number[]; // roller indices, highest total first
+    rank: number[]; // roller index -> pick position
+    windAt: Wind[]; // wind hidden under each face-down tile position
+  } | null>(null);
+  if (!plan.current) {
+    const dice = Array.from({ length: n }, roll3);
     const totals = dice.map((d) => d[0] + d[1] + d[2]);
-    const tiebreak = Array.from({ length: n }, () => Math.random());
-    // Rank rollers by total (desc); ties broken randomly. Roller 0 is YOU.
-    const order = Array.from({ length: n }, (_, i) => i).sort(
-      (a, b) => totals[b] - totals[a] || tiebreak[a] - tiebreak[b]
+    const tie = Array.from({ length: n }, Math.random);
+    const pickOrder = Array.from({ length: n }, (_, i) => i).sort(
+      (a, b) => totals[b] - totals[a] || tie[a] - tie[b]
     );
-    const windOrder = shuffle(WINDS.slice(0, n)); // face-down tiles
     const rank: number[] = new Array(n).fill(0);
-    const wind: Wind[] = new Array(n).fill("east");
-    order.forEach((rollerIdx, pickPos) => {
-      rank[rollerIdx] = pickPos;
-      wind[rollerIdx] = windOrder[pickPos]; // picks in rank order
-    });
-    const rollers: Roller[] = Array.from({ length: n }, (_, i) => ({
-      isHuman: i === 0,
-      dice: dice[i],
-      total: totals[i],
-      wind: wind[i],
-      rank: rank[i],
-    }));
-    planRef.current = {
-      rollers,
-      seatIndex: WINDS.indexOf(wind[0]),
+    pickOrder.forEach((r, pos) => (rank[r] = pos));
+    plan.current = {
+      dice,
+      totals,
+      pickOrder,
+      rank,
+      windAt: shuffle(WINDS.slice(0, n)),
     };
   }
-  const { rollers, seatIndex } = planRef.current;
-  const humanWind = rollers[0].wind;
+  const { dice, totals, pickOrder, rank, windAt } = plan.current;
 
-  // Reveal order for the wind tiles: YOU first, then the rest by rank.
-  const revealOrder = [
-    0,
-    ...rollers
-      .map((_, i) => i)
-      .filter((i) => i !== 0)
-      .sort((a, b) => rollers[a].rank - rollers[b].rank),
-  ];
-
-  const [started, setStarted] = useState(false);
-  const [rolledCount, setRolledCount] = useState(0); // how many rollers shown
+  const [phase, setPhase] = useState<Phase>("ready");
+  const [rolledCount, setRolledCount] = useState(0);
   const [tumble, setTumble] = useState([1, 1, 1]);
-  const [assigned, setAssigned] = useState(false);
-  const [flipped, setFlipped] = useState(0); // wind tiles revealed
-  const [done, setDone] = useState(false);
+  const [pickStep, setPickStep] = useState(0);
+  const [takenBy, setTakenBy] = useState<(number | null)[]>(
+    new Array(n).fill(null)
+  );
+  const [flipped, setFlipped] = useState(0);
 
+  const currentPicker = pickOrder[pickStep];
+  const yourTurn = phase === "picking" && currentPicker === 0;
+
+  // ---- Rolling animation ------------------------------------------------
   useEffect(() => {
-    if (!started) return;
+    if (phase !== "rolling") return;
     const timeouts: ReturnType<typeof setTimeout>[] = [];
-    const at = (fn: () => void, t: number) =>
-      timeouts.push(setTimeout(fn, t));
-
     const interval = setInterval(() => setTumble(roll3()), 80);
-    at(() => {
-      clearInterval(interval);
-      setRolledCount(1); // YOU settles
-    }, 900);
-    for (let b = 1; b < n; b++) at(() => setRolledCount(b + 1), 900 + b * 650);
-
-    const afterRolls = 900 + (n - 1) * 650;
-    at(() => setAssigned(true), afterRolls + 600);
-    for (let r = 0; r < n; r++)
-      at(() => setFlipped(r + 1), afterRolls + 1200 + r * 600);
-    at(() => setDone(true), afterRolls + 1200 + n * 600);
-
+    timeouts.push(
+      setTimeout(() => {
+        clearInterval(interval);
+        setRolledCount(1);
+      }, 900)
+    );
+    for (let b = 1; b < n; b++)
+      timeouts.push(setTimeout(() => setRolledCount(b + 1), 900 + b * 650));
+    timeouts.push(
+      setTimeout(() => setPhase("picking"), 900 + (n - 1) * 650 + 500)
+    );
     return () => {
       clearInterval(interval);
       timeouts.forEach(clearTimeout);
     };
-  }, [started, n]);
+  }, [phase, n]);
 
-  const isRevealed = (rollerIdx: number) =>
-    flipped > revealOrder.indexOf(rollerIdx);
+  // ---- Auto-pick for bots; wait for the human ---------------------------
+  useEffect(() => {
+    if (phase !== "picking") return;
+    if (pickStep >= n) {
+      setPhase("revealing");
+      return;
+    }
+    if (currentPicker === 0) return; // human picks manually
+    const t = setTimeout(() => {
+      setTakenBy((prev) => {
+        const free = prev
+          .map((v, i) => (v === null ? i : -1))
+          .filter((i) => i >= 0);
+        const pos = free[Math.floor(Math.random() * free.length)];
+        const next = [...prev];
+        next[pos] = currentPicker;
+        return next;
+      });
+      setPickStep((s) => s + 1);
+    }, 750);
+    return () => clearTimeout(t);
+  }, [phase, pickStep, currentPicker, n]);
+
+  // ---- Reveal tiles one by one (you first) ------------------------------
+  const revealPositions = useMemo(() => {
+    if (phase !== "revealing" && phase !== "done") return [];
+    const positions = takenBy.map((_, i) => i);
+    const youPos = takenBy.indexOf(0);
+    const others = positions
+      .filter((p) => p !== youPos)
+      .sort((a, b) => rank[takenBy[a]!] - rank[takenBy[b]!]);
+    return [youPos, ...others];
+  }, [phase, takenBy, rank]);
+
+  useEffect(() => {
+    if (phase !== "revealing") return;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    for (let r = 0; r < n; r++)
+      timeouts.push(setTimeout(() => setFlipped(r + 1), 350 + r * 600));
+    timeouts.push(setTimeout(() => setPhase("done"), 350 + n * 600));
+    return () => timeouts.forEach(clearTimeout);
+  }, [phase, n]);
+
+  const handlePick = (pos: number) => {
+    if (!yourTurn || takenBy[pos] !== null) return;
+    setTakenBy((prev) => {
+      const next = [...prev];
+      next[pos] = 0;
+      return next;
+    });
+    setPickStep((s) => s + 1);
+  };
+
+  const isRevealed = (pos: number) =>
+    flipped > revealPositions.indexOf(pos) && revealPositions.indexOf(pos) >= 0;
+
+  const youPos = takenBy.indexOf(0);
+  const humanWind = youPos >= 0 ? windAt[youPos] : "east";
+  const seatIndex = WINDS.indexOf(humanWind);
 
   return (
-    <div className="tile-texture fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-[var(--bg-dark)] px-6 py-8">
+    <div className="tile-texture fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-[var(--bg-dark)] px-5 py-8">
       <h2 className="font-display text-2xl font-bold tracking-wide text-[var(--accent-gold)]">
         掷骰定位
       </h2>
@@ -155,100 +190,120 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
         Roll for Seats
       </p>
 
-      {/* Roller rows */}
-      <div className="mt-7 w-full max-w-[400px] space-y-2.5">
-        {rollers.map((r, i) => {
+      {/* Roller dice rows */}
+      <div className="mt-6 w-full max-w-[400px] space-y-2">
+        {Array.from({ length: n }, (_, i) => {
           const hasRolled = rolledCount > i;
-          const rolling = started && rolledCount === i && i === 0;
+          const rolling = phase === "rolling" && rolledCount === i && i === 0;
+          const picking = phase === "picking" && currentPicker === i;
           return (
             <div
               key={i}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${
-                r.isHuman
+              className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 transition-colors ${
+                i === 0
                   ? "border-[var(--accent-gold)]/50 bg-[rgba(201,168,76,0.08)]"
                   : "border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)]"
-              }`}
+              } ${picking ? "ring-1 ring-[var(--accent-gold)]" : ""}`}
             >
               <span
-                className={`w-12 shrink-0 text-[11px] font-bold uppercase tracking-wider ${
-                  r.isHuman ? "text-[var(--accent-gold)]" : "text-[var(--text-muted)]"
+                className={`w-11 shrink-0 text-[11px] font-bold uppercase ${
+                  i === 0 ? "text-[var(--accent-gold)]" : "text-[var(--text-muted)]"
                 }`}
               >
-                {r.isHuman ? "你 YOU" : `BOT ${i}`}
+                {i === 0 ? "你 YOU" : `BOT ${i}`}
               </span>
-
-              {/* Dice */}
-              <div className="flex w-[104px] shrink-0 gap-1">
+              <div className="flex w-[92px] shrink-0 gap-1">
                 {hasRolled
-                  ? r.dice.map((v, k) => <Die key={k} value={v} />)
+                  ? dice[i].map((v, k) => <Die key={k} value={v} />)
                   : rolling
                     ? tumble.map((v, k) => <Die key={k} value={v} rolling />)
                     : [0, 1, 2].map((k) => (
                         <div
                           key={k}
-                          className="h-8 w-8 rounded-md border border-dashed border-[rgba(255,255,255,0.12)]"
+                          className="h-7 w-7 rounded-md border border-dashed border-[rgba(255,255,255,0.12)]"
                         />
                       ))}
               </div>
-
-              {/* Total + rank */}
-              <div className="w-12 shrink-0 text-center">
-                {hasRolled && (
-                  <span className="animate-pop-in text-lg font-bold text-[var(--text-primary)]">
-                    {r.total}
-                  </span>
-                )}
+              <div className="w-7 text-center text-base font-bold text-[var(--text-primary)]">
+                {hasRolled ? totals[i] : ""}
               </div>
-              <div className="w-8 shrink-0 text-center">
-                {assigned && (
-                  <span className="animate-pop-in text-[11px] font-bold text-[var(--accent-gold)]">
-                    #{r.rank + 1}
-                  </span>
-                )}
-              </div>
-
-              {/* Wind tile (face-down until revealed) */}
-              <div className="ml-auto">
-                {assigned ? (
-                  <TileComponent
-                    tileId={r.wind}
-                    size="discard"
-                    faceDown={!isRevealed(i)}
-                    selected={isRevealed(i) && r.isHuman}
-                  />
-                ) : (
-                  <div className="h-11 w-8" />
-                )}
+              <div className="ml-auto text-right text-[11px] font-bold text-[var(--accent-gold)]">
+                {phase !== "ready" && phase !== "rolling" ? `#${rank[i] + 1}` : ""}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Controls / result */}
-      <div className="mt-7 w-full max-w-[400px] text-center">
-        {!started && (
+      {/* Tile pool */}
+      {(phase === "picking" || phase === "revealing" || phase === "done") && (
+        <div className="mt-6 flex items-start justify-center gap-2.5">
+          {windAt.map((w, pos) => {
+            const taker = takenBy[pos];
+            const revealed = isRevealed(pos);
+            const clickable = yourTurn && taker === null;
+            return (
+              <button
+                key={pos}
+                onClick={() => handlePick(pos)}
+                disabled={!clickable}
+                className={`flex flex-col items-center gap-1 rounded-xl p-1 transition-transform ${
+                  clickable
+                    ? "-translate-y-1 cursor-pointer animate-pulse"
+                    : "cursor-default"
+                } ${taker !== null && !revealed ? "opacity-70" : ""}`}
+              >
+                <TileComponent
+                  tileId={w}
+                  size="hand"
+                  faceDown={!revealed}
+                  selected={revealed && taker === 0}
+                />
+                <span
+                  className={`text-[10px] font-bold uppercase ${
+                    taker === 0
+                      ? "text-[var(--accent-gold)]"
+                      : "text-[var(--text-muted)]"
+                  }`}
+                >
+                  {taker === null ? " " : taker === 0 ? "你" : `BOT ${taker}`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Controls / status / result */}
+      <div className="mt-6 w-full max-w-[400px] text-center">
+        {phase === "ready" && (
           <Button
             variant="gold"
             fullWidth
-            onClick={() => setStarted(true)}
+            onClick={() => setPhase("rolling")}
             className="py-3.5 text-base font-bold tracking-wide"
           >
             🎲 掷骰子 · ROLL THE DICE
           </Button>
         )}
 
-        {started && !done && (
-          <p className="text-sm text-[var(--text-muted)]">
-            {rolledCount < n
-              ? "投掷中… rolling"
-              : !assigned
-                ? "按点数大小依次摸牌… picking"
-                : "翻牌… revealing"}
+        {phase === "rolling" && (
+          <p className="text-sm text-[var(--text-muted)]">投掷中… rolling</p>
+        )}
+
+        {phase === "picking" && (
+          <p className="text-sm font-semibold text-[var(--accent-gold)]">
+            {yourTurn
+              ? "轮到你摸牌 — 点选一张 · Your pick — tap a tile"
+              : `BOT ${currentPicker} 摸牌中… picking`}
           </p>
         )}
 
-        {done && (
+        {phase === "revealing" && (
+          <p className="text-sm text-[var(--text-muted)]">翻牌… revealing</p>
+        )}
+
+        {phase === "done" && (
           <div className="animate-slide-up">
             <p className="text-lg font-semibold text-[var(--text-primary)]">
               你抽到{" "}
