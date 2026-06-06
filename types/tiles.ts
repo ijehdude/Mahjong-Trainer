@@ -108,8 +108,8 @@ export const CN_NUMERALS = [
 export const FLOWER_LABEL: Record<FlowerId, string> = {
   f1: "梅",
   f2: "兰",
-  f3: "竹",
-  f4: "菊",
+  f3: "菊",
+  f4: "竹",
 };
 
 export const SEASON_LABEL: Record<SeasonId, string> = {

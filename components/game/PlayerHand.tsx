@@ -56,7 +56,7 @@ export default function PlayerHand({
           <span className="flex items-center gap-1 rounded-md bg-[rgba(201,168,76,0.12)] px-1.5 py-0.5">
             <span className="text-[var(--accent-gold)]">花/季 {flowers.length}</span>
             {flowers.map((t) => (
-              <TileComponent key={t} tileId={t} size="mini" />
+              <TileComponent key={t} tileId={t} size="discard" />
             ))}
           </span>
         )}

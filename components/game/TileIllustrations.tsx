@@ -207,26 +207,7 @@ export function FlowerIllustration({ bonus }: { bonus: number }) {
           <Blossom cx={24} cy={28} r={2.4} fill={PINK} />
         </g>
       );
-    case 3: // bamboo 竹
-      return (
-        <g>
-          <g stroke={GREEN} strokeWidth="3" strokeLinecap="round">
-            <path d="M14 44 L14 10" />
-            <path d="M22 44 L22 16" />
-          </g>
-          <g stroke="#155f3c" strokeWidth="1">
-            <line x1="11" y1="22" x2="17" y2="22" />
-            <line x1="11" y1="32" x2="17" y2="32" />
-            <line x1="19" y1="28" x2="25" y2="28" />
-          </g>
-          <g fill={GREEN}>
-            <path d="M14 12 Q22 8 26 12 Q20 14 14 13 Z" />
-            <path d="M22 18 Q30 16 32 21 Q26 21 22 19 Z" />
-            <path d="M14 16 Q7 14 5 19 Q11 19 14 17 Z" />
-          </g>
-        </g>
-      );
-    default: // chrysanthemum 菊
+    case 3: // chrysanthemum 菊
       return (
         <g>
           <path d="M18 30 L18 44" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round" />
@@ -248,74 +229,94 @@ export function FlowerIllustration({ bonus }: { bonus: number }) {
           <circle cx="18" cy="22" r="3.4" fill={YELLOW} />
         </g>
       );
+    default: // bamboo 竹
+      return (
+        <g>
+          <g stroke={GREEN} strokeWidth="3" strokeLinecap="round">
+            <path d="M14 44 L14 10" />
+            <path d="M22 44 L22 16" />
+          </g>
+          <g stroke="#155f3c" strokeWidth="1">
+            <line x1="11" y1="22" x2="17" y2="22" />
+            <line x1="11" y1="32" x2="17" y2="32" />
+            <line x1="19" y1="28" x2="25" y2="28" />
+          </g>
+          <g fill={GREEN}>
+            <path d="M14 12 Q22 8 26 12 Q20 14 14 13 Z" />
+            <path d="M22 18 Q30 16 32 21 Q26 21 22 19 Z" />
+            <path d="M14 16 Q7 14 5 19 Q11 19 14 17 Z" />
+          </g>
+        </g>
+      );
   }
 }
 
-/* ---- Seasons (1 春 / 2 夏 / 3 秋 / 4 冬) — botanical, like real tiles ----- */
+/* ---- Seasons (1 春 / 2 夏 / 3 秋 / 4 冬) — seasonal icons ------------------ */
 export function SeasonIllustration({ bonus }: { bonus: number }) {
   switch (bonus) {
-    case 1: // spring — orchid shoots
+    case 1: // spring — sprout
       return (
         <g>
-          <g fill="none" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round">
-            <path d="M15 44 Q6 30 11 13" />
-            <path d="M18 44 Q18 27 18 11" />
-            <path d="M21 44 Q30 30 25 14" />
+          <path d="M18 44 L18 22" stroke={GREEN} strokeWidth="2" strokeLinecap="round" />
+          <path d="M18 30 Q8 28 7 18 Q17 20 18 28 Z" fill={GREEN} />
+          <path d="M18 26 Q28 24 29 14 Q19 16 18 24 Z" fill="#2c9a63" />
+          <circle cx="18" cy="14" r="3" fill={PINK} />
+        </g>
+      );
+    case 2: // summer — sun
+      return (
+        <g>
+          <g stroke={ORANGE} strokeWidth="1.6" strokeLinecap="round">
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
+              const rad = (a * Math.PI) / 180;
+              return (
+                <line
+                  key={a}
+                  x1={18 + Math.cos(rad) * 9}
+                  y1={24 + Math.sin(rad) * 9}
+                  x2={18 + Math.cos(rad) * 13}
+                  y2={24 + Math.sin(rad) * 13}
+                />
+              );
+            })}
           </g>
-          <Blossom cx={18} cy={20} r={3} fill={PINK} />
+          <circle cx="18" cy="24" r="8" fill={YELLOW} />
+          <circle cx="18" cy="24" r="8" fill="none" stroke={ORANGE} strokeWidth="1" />
         </g>
       );
-    case 2: // summer — lotus
+    case 3: // autumn — maple leaf
       return (
         <g>
-          <path d="M18 42 L18 28" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round" />
-          <ellipse cx="10" cy="40" rx="7" ry="2.4" fill={GREEN} />
-          <ellipse cx="26" cy="40" rx="6" ry="2.2" fill="#2c9a63" />
-          {[-26, -9, 9, 26].map((a) => {
+          <path d="M18 44 L18 32" stroke={BROWN} strokeWidth="1.4" strokeLinecap="round" />
+          <path
+            d="M18 8 L21 16 L27 14 L23 21 L29 24 L22 25 L24 33 L18 28 L12 33 L14 25 L7 24 L13 21 L9 14 L15 16 Z"
+            fill={ORANGE}
+          />
+          <path d="M18 12 L18 30" stroke="#a8531f" strokeWidth="0.8" />
+        </g>
+      );
+    default: // winter — snowflake
+      return (
+        <g stroke={BLUE} strokeWidth="1.5" strokeLinecap="round" fill="none">
+          {[0, 60, 120].map((a) => {
             const rad = (a * Math.PI) / 180;
+            const dx = Math.cos(rad) * 13;
+            const dy = Math.sin(rad) * 13;
+            return <line key={a} x1={18 - dx} y1={24 - dy} x2={18 + dx} y2={24 + dy} />;
+          })}
+          {[0, 60, 120, 180, 240, 300].map((a) => {
+            const rad = (a * Math.PI) / 180;
+            const bx = 18 + Math.cos(rad) * 8;
+            const by = 24 + Math.sin(rad) * 8;
+            const pr = ((a + 35) * Math.PI) / 180;
+            const pr2 = ((a - 35) * Math.PI) / 180;
             return (
-              <path
-                key={a}
-                d="M18 26 q-3 -8 0 -14 q3 6 0 14 z"
-                fill={PINK}
-                transform={`rotate(${a} 18 26)`}
-              />
+              <g key={a}>
+                <line x1={bx} y1={by} x2={bx + Math.cos(pr) * 3} y2={by + Math.sin(pr) * 3} />
+                <line x1={bx} y1={by} x2={bx + Math.cos(pr2) * 3} y2={by + Math.sin(pr2) * 3} />
+              </g>
             );
           })}
-          <path d="M18 26 q-2 -6 0 -11 q2 5 0 11 z" fill="#e07aa8" />
-          <circle cx="18" cy="20" r="2" fill={YELLOW} />
-        </g>
-      );
-    case 3: // autumn — chrysanthemum
-      return (
-        <g>
-          <path d="M18 30 L18 44" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M18 38 Q12 36 10 31 Q16 33 18 37 Z" fill={GREEN} />
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((a) => {
-            const rad = (a * Math.PI) / 180;
-            return (
-              <ellipse
-                key={a}
-                cx={18 + Math.cos(rad) * 7}
-                cy={22 + Math.sin(rad) * 7}
-                rx={3.4}
-                ry={1.7}
-                fill={ORANGE}
-                transform={`rotate(${a} ${18 + Math.cos(rad) * 7} ${22 + Math.sin(rad) * 7})`}
-              />
-            );
-          })}
-          <circle cx="18" cy="22" r="3.2" fill={YELLOW} />
-        </g>
-      );
-    default: // winter — plum blossom on a bare twig
-      return (
-        <g>
-          <path d="M10 44 Q15 30 25 15" fill="none" stroke={BROWN} strokeWidth="2" strokeLinecap="round" />
-          <path d="M15 30 L21 26" stroke={BROWN} strokeWidth="1.3" strokeLinecap="round" />
-          <Blossom cx={25} cy={14} r={3.3} fill="#dfe7f2" />
-          <Blossom cx={20} cy={25} r={2.8} fill="#cfe0f0" />
-          <Blossom cx={12} cy={37} r={2.6} fill="#dfe7f2" />
         </g>
       );
   }

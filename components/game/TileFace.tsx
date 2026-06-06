@@ -266,17 +266,17 @@ function DragonFace({ dragon }: { dragon: string }) {
   );
 }
 
-/** Small numbered badge in the top-left corner (flowers/seasons). */
+/** Numbered badge in the top-left corner (flowers/seasons). */
 function NumberBadge({ n, color }: { n: number; color: string }) {
   return (
     <g>
-      <circle cx={8} cy={9} r={5.5} fill={color} />
+      <circle cx={9} cy={9.5} r={7.5} fill={color} />
       <text
-        x={8}
-        y={12}
+        x={9}
+        y={13.2}
         textAnchor="middle"
         fontFamily={SERIF}
-        fontSize={8}
+        fontSize={12}
         fontWeight={700}
         fill="#fff"
       >
@@ -287,29 +287,33 @@ function NumberBadge({ n, color }: { n: number; color: string }) {
 }
 
 function BonusFace({ tile }: { tile: Tile }) {
-  const isFlower = tile.category === "flower";
+  // Flowers: a botanical drawing in the upper area + the character at the
+  // bottom (like real tiles). Seasons: a seasonal icon filling the tile.
+  if (tile.category === "flower") {
+    return (
+      <g>
+        <g transform="translate(3.6 -3) scale(0.8)">
+          <FlowerIllustration bonus={tile.bonus ?? 1} />
+        </g>
+        <NumberBadge n={tile.bonus ?? 1} color={BLUE} />
+        <text
+          x={18}
+          y={47}
+          textAnchor="middle"
+          fontFamily={SERIF}
+          fontSize={9}
+          fontWeight={700}
+          fill={GREEN}
+        >
+          {tile.label}
+        </text>
+      </g>
+    );
+  }
   return (
     <g>
-      {/* illustration sits in the upper region, character labels the bottom */}
-      <g transform="translate(3.6 -3) scale(0.8)">
-        {isFlower ? (
-          <FlowerIllustration bonus={tile.bonus ?? 1} />
-        ) : (
-          <SeasonIllustration bonus={tile.bonus ?? 1} />
-        )}
-      </g>
-      <NumberBadge n={tile.bonus ?? 1} color={isFlower ? BLUE : ORANGE} />
-      <text
-        x={18}
-        y={47}
-        textAnchor="middle"
-        fontFamily={SERIF}
-        fontSize={9}
-        fontWeight={700}
-        fill={isFlower ? GREEN : ORANGE}
-      >
-        {tile.label}
-      </text>
+      <SeasonIllustration bonus={tile.bonus ?? 1} />
+      <NumberBadge n={tile.bonus ?? 1} color={ORANGE} />
     </g>
   );
 }

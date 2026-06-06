@@ -157,11 +157,11 @@ function PlayerInfo({
       {player.flowers.length > 0 && (
         <div
           className={`flex flex-wrap items-center gap-0.5 rounded bg-[rgba(201,168,76,0.12)] px-1 py-0.5 ${
-            vertical ? "max-w-[64px]" : ""
+            vertical ? "max-w-[80px]" : ""
           }`}
         >
           {player.flowers.map((t) => (
-            <TileComponent key={t} tileId={t} size="mini" />
+            <TileComponent key={t} tileId={t} size="discard" />
           ))}
         </div>
       )}
