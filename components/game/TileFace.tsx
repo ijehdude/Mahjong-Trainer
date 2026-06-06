@@ -161,7 +161,8 @@ function BambooFace({ n }: { n: number }) {
   // 8 bamboo: two "M" clusters (four sticks each, zig-zag tilt).
   if (n === 8) {
     const xs = [10, 15.5, 21, 26.5];
-    const angles = [-18, 18, -18, 18];
+    // Converging tops form peaks → "M" shapes (not valleys → "W").
+    const angles = [18, -18, 18, -18];
     return (
       <g>
         {[14, 36].map((cy, ci) =>
