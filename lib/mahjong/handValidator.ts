@@ -182,10 +182,33 @@ export function isThirteenOrphans(concealed: TileId[], melds: Meld[]): boolean {
   return pairs === 1;
 }
 
+/**
+ * Seven Pairs (七对子): a fully concealed hand of seven pairs. Fei wildcards may
+ * fill a missing half-pair.
+ */
+export function isSevenPairs(concealed: TileId[], melds: Meld[]): boolean {
+  if (melds.length > 0 || concealed.length !== 14) return false;
+  const jokers = concealed.filter(isFei).length;
+  const counts = countTiles(concealed.filter((t) => !isFei(t)));
+  let pairs = 0;
+  let singles = 0;
+  for (const c of counts.values()) {
+    pairs += Math.floor(c / 2);
+    singles += c % 2;
+  }
+  // Each leftover single needs a joker; remaining jokers must pair among
+  // themselves. Total must come to exactly seven pairs.
+  if (jokers < singles) return false;
+  if ((jokers - singles) % 2 !== 0) return false;
+  return pairs + singles + (jokers - singles) / 2 === 7;
+}
+
 /** Is `concealed` + `melds` a complete winning hand (standard or special)? */
 export function isWinningHand(concealed: TileId[], melds: Meld[]): boolean {
   if (decomposeWin(concealed, melds) !== null) return true;
-  return isThirteenOrphans(concealed, melds);
+  return (
+    isThirteenOrphans(concealed, melds) || isSevenPairs(concealed, melds)
+  );
 }
 
 /**

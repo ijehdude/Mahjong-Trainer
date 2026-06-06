@@ -10,7 +10,7 @@ import type {
 } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
 import { buildDeck, deal, shuffle } from "./deck";
-import { isThirteenOrphans, isWinningHand } from "./handValidator";
+import { isSevenPairs, isThirteenOrphans, isWinningHand } from "./handValidator";
 import { calculateTai, computePayments } from "./taiCalculator";
 import { decomposeWin } from "./handValidator";
 import { botWantsKong, botWantsPong, chooseBotDiscard } from "./botAI";
@@ -736,7 +736,12 @@ function prospectiveWinTai(
     ? winner.hand
     : [...winner.hand, state.lastDiscard?.tile ?? ""];
   const decomposition = decomposeWin(concealed, winner.melds);
-  if (!decomposition && !isThirteenOrphans(concealed, winner.melds)) return 0;
+  if (
+    !decomposition &&
+    !isThirteenOrphans(concealed, winner.melds) &&
+    !isSevenPairs(concealed, winner.melds)
+  )
+    return 0;
   return calculateTai({
     decomposition,
     concealedTiles: concealed,

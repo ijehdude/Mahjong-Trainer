@@ -3,7 +3,7 @@ import type { Meld } from "@/types/game";
 import { LIMIT_TAI } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
 import { ANIMAL_NAME, DRAGONS, WINDS } from "@/types/tiles";
-import { Decomposition, isThirteenOrphans } from "./handValidator";
+import { Decomposition, isSevenPairs, isThirteenOrphans } from "./handValidator";
 import { isAnimal, isFlowerOrSeason, isSuit, suitOf } from "./tiles";
 
 /* ===========================================================================
@@ -36,6 +36,14 @@ const FEI_TAI: Record<GameRules["feiPayout"], number> = {
   none: 0,
   "1tai": 1,
   "2tai": 2,
+};
+
+/** Seat → flower/season number (a flower scores only if it matches this). */
+const SEAT_NUMBER: Record<Wind, number> = {
+  east: 1,
+  south: 2,
+  west: 3,
+  north: 4,
 };
 
 /** Pure Nine Gates shape: one suit, 3x1, 3x9, at least one each of 2–8. */
@@ -73,15 +81,26 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
 
-    // Flowers & seasons (fei) — per the fei payout setting.
-    const feiCount = bonusTiles.filter(isFlowerOrSeason).length;
-    if (rules.flowerTiles && feiCount > 0) {
+    // Flowers & seasons — Singapore rule: a flower/season only scores when its
+    // NUMBER matches the player's seat (East=1, South=2, West=3, North=4).
+    // Non-matching flowers grant a replacement draw but no tai.
+    if (rules.flowerTiles) {
+      const seatNum = SEAT_NUMBER[seatWind];
+      const fs = bonusTiles.filter(isFlowerOrSeason);
+      const matching = fs.filter((t) => Number(t[1]) === seatNum);
       const per = FEI_TAI[rules.feiPayout];
-      if (per > 0)
+      if (per > 0 && matching.length > 0)
         breakdown.push({
-          label: `${feiCount} flower/season 花`,
-          tai: per * feiCount,
+          label: `${matching.length} seat flower 正花`,
+          tai: per * matching.length,
         });
+      // A complete set of all four flowers (or all four seasons) — 一台花.
+      const flowerNums = new Set(fs.filter((t) => t[0] === "f").map((t) => t[1]));
+      const seasonNums = new Set(fs.filter((t) => t[0] === "s").map((t) => t[1]));
+      if (flowerNums.size === 4)
+        breakdown.push({ label: "All 4 flowers 一台花", tai: 1 });
+      if (seasonNums.size === 4)
+        breakdown.push({ label: "All 4 seasons 一台花", tai: 1 });
     }
 
     // Animals — 1 tai each, plus the predator/prey pair bonuses.
@@ -103,11 +122,13 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     }
   };
 
-  // ---- Thirteen Orphans (十三幺) — special limit hand ----------------------
+  // ---- Special hands with no standard 4-sets-1-pair decomposition ---------
   if (!decomposition) {
     if (isThirteenOrphans(concealedTiles, melds)) {
       breakdown.push({ label: "Thirteen Orphans 十三幺", tai: 13 });
       limit = true;
+    } else if (isSevenPairs(concealedTiles, melds)) {
+      breakdown.push({ label: "Seven Pairs 七对子", tai: 2 });
     }
     addBonus();
     return finalize(breakdown, rules, limit);

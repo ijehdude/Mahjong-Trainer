@@ -28,6 +28,7 @@ const TAI_TABLE: { feature: string; tai: string }[] = [
 ];
 
 const SPECIAL_TABLE: { feature: string; tai: string }[] = [
+  { feature: "七对子 Seven Pairs", tai: "2 台" },
   { feature: "十三幺 Thirteen Orphans", tai: "限制番" },
   { feature: "九莲宝灯 Nine Gates", tai: "限制番" },
   { feature: "大三元 Big Three Dragons", tai: "限制番" },
@@ -166,7 +167,8 @@ export default function StrategyGuide({ open, onClose }: Props) {
             新加坡规则 Singapore-Specific
           </h3>
           <p className="text-sm text-[var(--text-primary)]/90">
-            花牌（花 / 季）计额外台数并补牌。胡牌需达到最低台数 — 在首页设置。
+            正花：花/季牌只有在号码对应你的门风时才计台（东=1 南=2 西=3
+            北=4），其他花牌只补牌不计台。胡牌需达到最低台数。 七对子也可胡。
             抢杠胡：可胡别人加杠的那张牌（+1 台）。
           </p>
         </section>
