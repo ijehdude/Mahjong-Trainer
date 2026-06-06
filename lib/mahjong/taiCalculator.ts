@@ -205,7 +205,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     const suits = new Set(suitTiles.map((t) => suitOf(t)));
     if (suits.size === 1) {
       flush = true;
-      breakdown.push({ label: "All one suit 清一色", tai: 3 });
+      breakdown.push({ label: "All one suit 清一色", tai: 4 });
     }
   }
 

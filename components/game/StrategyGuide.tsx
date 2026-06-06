@@ -14,7 +14,7 @@ interface Props {
 const TAI_TABLE: { feature: string; tai: string }[] = [
   { feature: "平胡 Ping Hu (all sequences)", tai: "+1" },
   { feature: "对对胡 All triplets", tai: "+2" },
-  { feature: "清一色 All one suit", tai: "+3" },
+  { feature: "清一色 All one suit", tai: "+4" },
   { feature: "自风刻 Seat wind triplet", tai: "+1" },
   { feature: "圈风刻 Round wind triplet", tai: "+1" },
   { feature: "箭刻 Dragon triplet (中/发/白)", tai: "+1 每" },
