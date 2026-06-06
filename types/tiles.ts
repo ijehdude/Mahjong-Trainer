@@ -19,7 +19,11 @@ export type TileCategory =
   | "dragon"
   | "flower"
   | "season"
-  | "animal";
+  | "animal"
+  | "fei"; // 飛 — wildcard (joker) tile
+
+/** The wildcard Fei tile id. */
+export const FEI: TileId = "fei";
 
 export type TileId = string;
 

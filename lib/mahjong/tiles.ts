@@ -93,6 +93,9 @@ export function makeTile(id: TileId): Tile {
       color: "teal",
     };
   }
+  if (id === "fei") {
+    return { id, category: "fei", label: "飛", color: "red" };
+  }
   // Fallback (should never happen)
   return { id, category: "suit", label: "?", color: "ink" };
 }
@@ -109,6 +112,10 @@ export function isHonor(id: TileId): boolean {
 
 export function isAnimal(id: TileId): boolean {
   return (ANIMALS as string[]).includes(id);
+}
+
+export function isFei(id: TileId): boolean {
+  return id === "fei";
 }
 
 export function isFlowerOrSeason(id: TileId): boolean {
@@ -148,6 +155,7 @@ export function tileName(id: TileId): string {
   }
   if (t.category === "flower") return `Flower ${t.bonus}`;
   if (t.category === "season") return `Season ${t.bonus}`;
+  if (t.category === "fei") return "Fei (wildcard)";
   return ANIMAL_NAME[id as keyof typeof ANIMAL_NAME] ?? id;
 }
 
@@ -161,6 +169,7 @@ const CATEGORY_ORDER: Record<string, number> = {
   flower: 5,
   season: 6,
   animal: 7,
+  fei: 8,
 };
 
 function sortKey(id: TileId): number {

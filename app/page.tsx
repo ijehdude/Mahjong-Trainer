@@ -93,6 +93,12 @@ export default function SetupPage() {
               checked={rules.animalTiles}
               onChange={(v) => update("animalTiles", v)}
             />
+            <ToggleRow
+              label="飛 Fei (百搭)"
+              description="Fei wildcard — 4 tiles kept in hand that substitute for any tile to complete your hand. Off by default."
+              checked={rules.feiTiles}
+              onChange={(v) => update("feiTiles", v)}
+            />
             {rules.flowerTiles && (
               <div className="pl-1">
                 <p className="mb-2 text-xs text-[var(--text-muted)]">

@@ -29,7 +29,7 @@ const SEAT_WINDS: Wind[] = ["east", "south", "west", "north"];
 
 export function createGame(rules: GameRules): GameState {
   const n = rules.players;
-  const deck = shuffle(buildDeck(rules.flowerTiles, rules.animalTiles));
+  const deck = shuffle(buildDeck(rules.flowerTiles, rules.animalTiles, rules.feiTiles));
   const dealt = deal(deck, n);
 
   // Randomise which seat the human takes. Dealer is always seat 0 (East), so
@@ -547,6 +547,9 @@ function resolveClaims(
   const tile = ld.tile;
   const human = state.players[state.humanIndex];
 
+  // A discarded Fei wildcard cannot be claimed or won on.
+  if (tile === "fei") return nextTurn(state);
+
   // ---- Priority 1: Ron --------------------------------------------------
   // Human ron — offer it.
   if (
@@ -911,7 +914,7 @@ export function recordDiscardAccuracy(
 
 export function startNextHand(state: GameState): GameState {
   const n = state.rules.players;
-  const deck = shuffle(buildDeck(state.rules.flowerTiles, state.rules.animalTiles));
+  const deck = shuffle(buildDeck(state.rules.flowerTiles, state.rules.animalTiles, state.rules.feiTiles));
   const dealt = deal(deck, n);
   const players = state.players.map((p, i) => ({
     ...p,

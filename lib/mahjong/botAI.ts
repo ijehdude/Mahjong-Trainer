@@ -1,5 +1,5 @@
 import type { TileId } from "@/types/tiles";
-import { countTiles, isHonor, isSuit, rankOf, suitOf } from "./tiles";
+import { countTiles, isFei, isHonor, isSuit, rankOf, suitOf } from "./tiles";
 
 /* ===========================================================================
    Simple bot AI. Bots are props, not strategists — they discard isolated
@@ -34,12 +34,14 @@ function tileUsefulness(tile: TileId, counts: Map<TileId, number>): number {
   return score;
 }
 
-/** Choose a tile to discard (least useful). */
+/** Choose a tile to discard (least useful). Never discards a Fei wildcard. */
 export function chooseBotDiscard(hand: TileId[]): TileId {
   const counts = countTiles(hand);
-  let worst: TileId = hand[0];
+  const candidates = hand.filter((t) => !isFei(t));
+  const pool = candidates.length > 0 ? candidates : hand;
+  let worst: TileId = pool[0];
   let worstScore = Infinity;
-  for (const tile of hand) {
+  for (const tile of pool) {
     const s = tileUsefulness(tile, counts);
     if (s < worstScore) {
       worstScore = s;

@@ -1,4 +1,12 @@
-import { ANIMALS, DRAGONS, FLOWERS, SEASONS, SUITS, WINDS } from "@/types/tiles";
+import {
+  ANIMALS,
+  DRAGONS,
+  FEI,
+  FLOWERS,
+  SEASONS,
+  SUITS,
+  WINDS,
+} from "@/types/tiles";
 import type { TileId } from "@/types/tiles";
 import { isBonus } from "./tiles";
 
@@ -13,7 +21,8 @@ import { isBonus } from "./tiles";
  */
 export function buildDeck(
   includeFlowers: boolean,
-  includeAnimals: boolean
+  includeAnimals: boolean,
+  includeFei = false
 ): TileId[] {
   const deck: TileId[] = [];
   for (const suit of SUITS) {
@@ -29,6 +38,10 @@ export function buildDeck(
   }
   if (includeAnimals) {
     for (const a of ANIMALS) deck.push(a);
+  }
+  if (includeFei) {
+    // Four Fei wildcard tiles (kept in hand, not auto-revealed).
+    for (let i = 0; i < 4; i++) deck.push(FEI);
   }
   return deck;
 }

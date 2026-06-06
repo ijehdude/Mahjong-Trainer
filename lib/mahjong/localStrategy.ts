@@ -4,6 +4,7 @@ import type { Verdict } from "@/lib/claude/strategyFeedback";
 import { WIND_NAME } from "@/types/tiles";
 import {
   countTiles,
+  isFei,
   isHonor,
   isSuit,
   rankOf,
@@ -57,6 +58,8 @@ function isValueHonor(tile: TileId, ctx: Ctx): boolean {
 }
 
 function usefulness(tile: TileId, ctx: Ctx): number {
+  // A Fei wildcard is the most valuable tile in hand — never discard it.
+  if (isFei(tile)) return 1000;
   let u = 0;
   const own = ctx.handCount.get(tile) ?? 0;
   if (own >= 3) u += 120;
@@ -174,6 +177,8 @@ function scoreAll(ctx: Ctx): Map<TileId, Scored> {
 /* ---- Explanation builders ------------------------------------------------- */
 
 function shapeReason(tile: TileId, ctx: Ctx): string {
+  if (isFei(tile))
+    return "the Fei wildcard can complete any set or pair — almost never discard it";
   const own = ctx.handCount.get(tile) ?? 0;
   const name = tileName(tile);
   if (own >= 3) return `you already hold three ${name} — throwing it breaks a triplet`;

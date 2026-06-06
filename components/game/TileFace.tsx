@@ -335,6 +335,8 @@ export default function TileFace({ tile }: { tile: Tile }) {
     content = <DragonFace dragon={tile.honor as string} />;
   } else if (tile.category === "animal") {
     content = <AnimalFace tile={tile} />;
+  } else if (tile.category === "fei") {
+    content = <HonorChar char="飛" color={RED} />;
   } else {
     content = <BonusFace tile={tile} />;
   }

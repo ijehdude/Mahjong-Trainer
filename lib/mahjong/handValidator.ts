@@ -1,6 +1,7 @@
 import type { TileId } from "@/types/tiles";
+import { FEI } from "@/types/tiles";
 import type { Meld } from "@/types/game";
-import { countTiles, isSuit, rankOf, sortTiles, suitOf } from "./tiles";
+import { countTiles, isFei, isSuit, rankOf, sortTiles, suitOf } from "./tiles";
 
 /* ===========================================================================
    Winning-hand validation via recursive decomposition.
@@ -20,52 +21,71 @@ export interface Decomposition {
   pair: TileId;
 }
 
-/** Try to decompose a counts map into exactly `setsNeeded` sets (no pair). */
+/**
+ * Try to decompose a counts map into exactly `setsNeeded` sets (no pair),
+ * allowing up to `jokers` wildcards (Fei) to fill missing tiles. Wildcards are
+ * resolved to the concrete tile they represent so the result scores correctly.
+ */
 function decomposeSets(
   counts: Map<TileId, number>,
   setsNeeded: number,
+  jokers: number,
   acc: SetGroup[]
 ): SetGroup[] | null {
   if (setsNeeded === 0) {
-    // success only if nothing left
     for (const v of counts.values()) if (v > 0) return null;
-    return acc;
+    return jokers === 0 ? acc : null;
   }
 
-  // Find the lowest remaining tile (deterministic ordering).
   const remaining = sortTiles(
     [...counts.entries()].filter(([, c]) => c > 0).map(([id]) => id)
   );
-  if (remaining.length === 0) return null;
-  const first = remaining[0];
 
-  // Option A: triplet
-  if ((counts.get(first) ?? 0) >= 3) {
-    const next = new Map(counts);
-    next.set(first, next.get(first)! - 3);
-    const res = decomposeSets(next, setsNeeded - 1, [
-      ...acc,
-      { type: "triplet", tiles: [first, first, first], concealed: true },
-    ]);
-    if (res) return res;
+  // No real tiles left: remaining sets must be made entirely of jokers.
+  if (remaining.length === 0) {
+    if (jokers !== setsNeeded * 3) return null;
+    const extra: SetGroup[] = [];
+    for (let i = 0; i < setsNeeded; i++)
+      extra.push({ type: "triplet", tiles: [FEI, FEI, FEI], concealed: true });
+    return [...acc, ...extra];
   }
 
-  // Option B: sequence (suited only)
+  const first = remaining[0];
+  const have = counts.get(first) ?? 0;
+
+  // Triplet: use k real copies + (3-k) jokers (k = 3,2,1).
+  for (const k of [3, 2, 1]) {
+    if (have >= k && jokers >= 3 - k) {
+      const next = new Map(counts);
+      next.set(first, have - k);
+      const res = decomposeSets(next, setsNeeded - 1, jokers - (3 - k), [
+        ...acc,
+        { type: "triplet", tiles: [first, first, first], concealed: true },
+      ]);
+      if (res) return res;
+    }
+  }
+
+  // Sequence (suited): fill any of the three positions with a joker.
   if (isSuit(first)) {
     const suit = suitOf(first)!;
     const rank = rankOf(first)!;
     if (rank <= 7) {
       const t2 = `${rank + 1}${suit}`;
       const t3 = `${rank + 2}${suit}`;
-      if ((counts.get(t2) ?? 0) >= 1 && (counts.get(t3) ?? 0) >= 1) {
+      const need2 = (counts.get(t2) ?? 0) >= 1 ? 0 : 1;
+      const need3 = (counts.get(t3) ?? 0) >= 1 ? 0 : 1;
+      if (jokers >= need2 + need3) {
         const next = new Map(counts);
-        next.set(first, next.get(first)! - 1);
-        next.set(t2, next.get(t2)! - 1);
-        next.set(t3, next.get(t3)! - 1);
-        const res = decomposeSets(next, setsNeeded - 1, [
-          ...acc,
-          { type: "sequence", tiles: [first, t2, t3], concealed: true },
-        ]);
+        next.set(first, have - 1);
+        if (!need2) next.set(t2, (next.get(t2) ?? 0) - 1);
+        if (!need3) next.set(t3, (next.get(t3) ?? 0) - 1);
+        const res = decomposeSets(
+          next,
+          setsNeeded - 1,
+          jokers - need2 - need3,
+          [...acc, { type: "sequence", tiles: [first, t2, t3], concealed: true }]
+        );
         if (res) return res;
       }
     }
@@ -75,24 +95,41 @@ function decomposeSets(
 }
 
 /**
- * Decompose concealed `tiles` into (setsNeeded sets + 1 pair).
- * Returns the first valid decomposition or null.
+ * Decompose concealed `tiles` into (setsNeeded sets + 1 pair). Fei tiles act as
+ * wildcards. Returns the first valid decomposition or null.
  */
 export function decomposeConcealed(
   tiles: TileId[],
   setsNeeded: number
 ): Decomposition | null {
   if (tiles.length !== setsNeeded * 3 + 2) return null;
-  const counts = countTiles(tiles);
+  const jokers = tiles.filter(isFei).length;
+  const counts = countTiles(tiles.filter((t) => !isFei(t)));
 
-  // Try each tile with count >= 2 as the pair.
+  // Pair from two real copies.
   for (const [id, c] of counts) {
     if (c >= 2) {
       const next = new Map(counts);
       next.set(id, c - 2);
-      const sets = decomposeSets(next, setsNeeded, []);
+      const sets = decomposeSets(next, setsNeeded, jokers, []);
       if (sets) return { sets, pair: id };
     }
+  }
+  // Pair from one real tile + a joker.
+  if (jokers >= 1) {
+    for (const [id, c] of counts) {
+      if (c >= 1) {
+        const next = new Map(counts);
+        next.set(id, c - 1);
+        const sets = decomposeSets(next, setsNeeded, jokers - 1, []);
+        if (sets) return { sets, pair: id };
+      }
+    }
+  }
+  // Pair from two jokers.
+  if (jokers >= 2) {
+    const sets = decomposeSets(new Map(counts), setsNeeded, jokers - 2, []);
+    if (sets) return { sets, pair: FEI };
   }
   return null;
 }
