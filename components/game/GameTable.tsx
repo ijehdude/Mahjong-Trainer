@@ -3,7 +3,7 @@
 import type { GameState, RelativeSeat } from "@/types/game";
 import { WIND_NAME } from "@/types/tiles";
 import { indexForSeat } from "@/lib/mahjong/gameState";
-import { bonusTaiFor } from "@/lib/mahjong/taiCalculator";
+import { taiHintFor } from "@/lib/mahjong/taiCalculator";
 import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
@@ -48,25 +48,22 @@ export default function GameTable({ state }: Props) {
 
       {/* Across (top) */}
       <div className="mt-3 flex justify-center">
-        <PlayerInfo view={across} align="center" rules={state.rules} />
+        <PlayerInfo view={across} align="center" rules={state.rules} roundWind={state.roundWind} />
       </div>
 
       {/* Middle row: left player | central discard pile | right player,
           all vertically centred — discards sit in the middle of the table. */}
       <div className="mt-3 flex flex-1 items-center gap-2">
-        <PlayerInfo view={left} vertical rules={state.rules} />
+        <PlayerInfo view={left} vertical rules={state.rules} roundWind={state.roundWind} />
 
         <div className="flex flex-1 flex-col items-center gap-2 self-stretch justify-center">
-          {/* Round wind + wall count */}
-          <div className="flex items-center gap-2">
-            <TileComponent tileId={state.roundWind} size="meld" />
-            <div className="text-center leading-tight">
-              <div className="text-base font-bold text-[var(--accent-gold)]">
-                {state.wall.length}
-              </div>
-              <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
-                牌墙 wall
-              </div>
+          {/* Wall count */}
+          <div className="text-center leading-tight">
+            <div className="text-base font-bold text-[var(--accent-gold)]">
+              {state.wall.length}
+            </div>
+            <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+              牌墙 wall
             </div>
           </div>
           {/* Central discard pile — up to 20 tiles per row */}
@@ -75,12 +72,12 @@ export default function GameTable({ state }: Props) {
           </div>
         </div>
 
-        <PlayerInfo view={right} vertical rules={state.rules} />
+        <PlayerInfo view={right} vertical rules={state.rules} roundWind={state.roundWind} />
       </div>
 
       {/* Self (bottom) */}
       <div className="mt-3 flex justify-center pt-1">
-        <PlayerInfo view={self} align="center" hideCount rules={state.rules} />
+        <PlayerInfo view={self} align="center" hideCount rules={state.rules} roundWind={state.roundWind} />
       </div>
     </div>
   );
@@ -117,6 +114,7 @@ function PlayerInfo({
   vertical = false,
   hideCount = false,
   rules,
+  roundWind,
 }: {
   view: {
     player: GameState["players"][number];
@@ -128,10 +126,19 @@ function PlayerInfo({
   vertical?: boolean;
   hideCount?: boolean;
   rules: GameState["rules"];
+  roundWind: GameState["roundWind"];
 }) {
   if (!view) return <div />;
   const { player, label, isDealer, isCurrent } = view;
-  const tai = bonusTaiFor(player.flowers, player.seatWind, rules);
+  const tai = taiHintFor(
+    player.flowers,
+    player.hand,
+    player.melds,
+    player.seatWind,
+    roundWind,
+    rules,
+    player.isHuman
+  );
   return (
     <div
       className={`flex max-w-[150px] flex-col gap-1 ${

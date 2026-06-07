@@ -135,7 +135,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     });
     limit = true;
     addBonus();
-    return finalize(breakdown, rules, hasBonus, limit);
+    return finalize(breakdown, rules, limit);
   }
 
   // ---- Special hands with no standard 4-sets-1-pair decomposition ---------
@@ -151,7 +151,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     } else {
       addBonus();
     }
-    return finalize(breakdown, rules, hasBonus, limit);
+    return finalize(breakdown, rules, limit);
   }
 
   const sets = decomposition.sets;
@@ -243,23 +243,16 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     });
 
   addBonus();
-  return finalize(breakdown, rules, hasBonus, limit);
+  return finalize(breakdown, rules, limit);
 }
 
 function finalize(
   breakdown: { label: string; tai: number }[],
   rules: GameRules,
-  hasBonus: boolean,
   limit: boolean
 ): TaiResult {
   const rawTai = breakdown.reduce((s, b) => s + b.tai, 0);
   let tai = rawTai;
-  // Chou Ping Hu (臭平胡): a tai-less hand still wins as 1 tai, but only if the
-  // winner holds a flower/season/animal (otherwise it has no tai and can't win).
-  if (tai === 0 && hasBonus) {
-    tai = 1;
-    breakdown.push({ label: "Chou Ping Hu 臭平胡", tai: 1 });
-  }
   if (rules.limitHandCap && tai > LIMIT_TAI) {
     tai = LIMIT_TAI;
     breakdown.push({ label: `Limit cap ${LIMIT_TAI}台`, tai: 0 });
@@ -333,5 +326,39 @@ export function bonusTaiFor(
   // Only ACTUAL scoring tiles count here. A non-matching flower/season is 0 tai
   // — Chou Ping Hu (holding a bonus tile) only matters when you actually win a
   // tai-less hand, so it is NOT shown as a guaranteed in-play tai.
+  return t;
+}
+
+/** +1 tai for a pong/kong of a dragon, or of the seat or round wind. */
+function honorPongTai(tile: TileId, seatWind: Wind, roundWind: Wind): number {
+  if ((DRAGONS as string[]).includes(tile)) return 1;
+  if (tile === seatWind || tile === roundWind) return 1; // double wind still +1
+  return 0;
+}
+
+/**
+ * Live tai hint for a player: bonus-tile tai plus tai from honor pongs/kongs.
+ * Melded honor pongs are always counted (visible); concealed honor triplets
+ * are counted only for one's own hand (ownHand).
+ */
+export function taiHintFor(
+  flowers: TileId[],
+  hand: TileId[],
+  melds: Meld[],
+  seatWind: Wind,
+  roundWind: Wind,
+  rules: GameRules,
+  ownHand: boolean
+): number {
+  let t = bonusTaiFor(flowers, seatWind, rules);
+  for (const m of melds)
+    if (m.type === "pong" || m.type === "kong")
+      t += honorPongTai(m.tiles[0], seatWind, roundWind);
+  if (ownHand) {
+    const counts = new Map<TileId, number>();
+    for (const tile of hand) counts.set(tile, (counts.get(tile) ?? 0) + 1);
+    for (const [tile, c] of counts)
+      if (c >= 3) t += honorPongTai(tile, seatWind, roundWind);
+  }
   return t;
 }
