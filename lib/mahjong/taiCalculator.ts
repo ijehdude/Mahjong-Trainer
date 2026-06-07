@@ -27,6 +27,8 @@ interface ScoreContext {
   roundWind: Wind;
   selfDraw: boolean;
   robKong: boolean;
+  /** Heavenly/Earthly hand (first-turn limit wins), if applicable. */
+  firstTurnWin?: "tian" | "di";
   /** The winner's revealed bonus tiles (flowers, seasons and animals). */
   bonusTiles: TileId[];
   rules: GameRules;
@@ -68,6 +70,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     roundWind,
     selfDraw,
     robKong,
+    firstTurnWin,
     bonusTiles,
     rules,
   } = ctx;
@@ -121,6 +124,17 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
         breakdown.push({ label: "All animals 四宝", tai: 1 });
     }
   };
+
+  // ---- Heavenly / Earthly hand — both are limit (满台) hands ---------------
+  if (firstTurnWin) {
+    breakdown.push({
+      label: firstTurnWin === "tian" ? "Heavenly Hand 天胡" : "Earthly Hand 地胡",
+      tai: 13,
+    });
+    limit = true;
+    addBonus();
+    return finalize(breakdown, rules, limit);
+  }
 
   // ---- Special hands with no standard 4-sets-1-pair decomposition ---------
   if (!decomposition) {

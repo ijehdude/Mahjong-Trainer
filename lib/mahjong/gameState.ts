@@ -955,6 +955,23 @@ function computeWin(
     }
   }
 
+  // Heavenly hand 天胡: dealer self-draws on the very first turn (no discards
+  // or melds yet). Earthly hand 地胡: a non-dealer rons the dealer's first
+  // discard. Both are limit (满台) hands.
+  const noMelds = state.players.every((p) => p.melds.length === 0);
+  let firstTurnWin: "tian" | "di" | undefined;
+  if (noMelds && winningTile) {
+    if (selfDraw && winnerIndex === 0 && state.discardPile.length === 0)
+      firstTurnWin = "tian";
+    else if (
+      !robKong &&
+      discarderIndex === 0 &&
+      winnerIndex !== 0 &&
+      state.discardPile.length === 1
+    )
+      firstTurnWin = "di";
+  }
+
   const decomposition = decomposeWin(concealed, winner.melds);
   const result0 = calculateTai({
     decomposition,
@@ -964,6 +981,7 @@ function computeWin(
     roundWind: state.roundWind,
     selfDraw,
     robKong,
+    firstTurnWin,
     bonusTiles: winner.flowers,
     rules: state.rules,
   });
