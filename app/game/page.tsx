@@ -342,12 +342,10 @@ export default function GamePage() {
           seatLabel={human.seatWind.toUpperCase()}
           bonusTai={taiHintFor(
             human.flowers,
-            human.hand,
             human.melds,
             human.seatWind,
             state.roundWind,
-            rules,
-            true
+            rules
           )}
         />
       </div>

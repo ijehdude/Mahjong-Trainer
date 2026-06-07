@@ -337,28 +337,20 @@ function honorPongTai(tile: TileId, seatWind: Wind, roundWind: Wind): number {
 }
 
 /**
- * Live tai hint for a player: bonus-tile tai plus tai from honor pongs/kongs.
- * Melded honor pongs are always counted (visible); concealed honor triplets
- * are counted only for one's own hand (ownHand).
+ * Live tai hint for a player: bonus-tile tai plus tai from MELDED honor
+ * pongs/kongs (dragons + seat/round wind) that are exposed on the table.
+ * Concealed triplets are not counted — they only score once the hand wins.
  */
 export function taiHintFor(
   flowers: TileId[],
-  hand: TileId[],
   melds: Meld[],
   seatWind: Wind,
   roundWind: Wind,
-  rules: GameRules,
-  ownHand: boolean
+  rules: GameRules
 ): number {
   let t = bonusTaiFor(flowers, seatWind, rules);
   for (const m of melds)
     if (m.type === "pong" || m.type === "kong")
       t += honorPongTai(m.tiles[0], seatWind, roundWind);
-  if (ownHand) {
-    const counts = new Map<TileId, number>();
-    for (const tile of hand) counts.set(tile, (counts.get(tile) ?? 0) + 1);
-    for (const [tile, c] of counts)
-      if (c >= 3) t += honorPongTai(tile, seatWind, roundWind);
-  }
   return t;
 }

@@ -134,12 +134,10 @@ function PlayerInfo({
   const { player, label, isDealer, isCurrent } = view;
   const tai = taiHintFor(
     player.flowers,
-    player.hand,
     player.melds,
     player.seatWind,
     roundWind,
-    rules,
-    player.isHuman
+    rules
   );
   const delta = payAnim ? payAnim.deltas[player.index] ?? 0 : 0;
   return (
