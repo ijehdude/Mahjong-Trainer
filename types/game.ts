@@ -132,6 +132,8 @@ export interface GameState {
   humanIndex: number;
   wall: TileId[];
   deadWallFlowers: TileId[]; // replacement draws
+  /** Transient per-player payment deltas to float on screen (bonus/kong). */
+  payAnim: { deltas: number[]; id: number } | null;
   roundWind: Wind;
   turnIndex: number; // whose turn
   phase: GamePhase;

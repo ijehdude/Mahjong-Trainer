@@ -48,13 +48,13 @@ export default function GameTable({ state }: Props) {
 
       {/* Across (top) */}
       <div className="mt-3 flex justify-center">
-        <PlayerInfo view={across} align="center" rules={state.rules} roundWind={state.roundWind} />
+        <PlayerInfo view={across} align="center" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Middle row: left player | central discard pile | right player,
           all vertically centred — discards sit in the middle of the table. */}
       <div className="mt-3 flex flex-1 items-center gap-2">
-        <PlayerInfo view={left} vertical rules={state.rules} roundWind={state.roundWind} />
+        <PlayerInfo view={left} vertical rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
 
         <div className="flex flex-1 flex-col items-center gap-2 self-stretch justify-center">
           {/* Wall count */}
@@ -72,12 +72,12 @@ export default function GameTable({ state }: Props) {
           </div>
         </div>
 
-        <PlayerInfo view={right} vertical rules={state.rules} roundWind={state.roundWind} />
+        <PlayerInfo view={right} vertical rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Self (bottom) */}
       <div className="mt-3 flex justify-center pt-1">
-        <PlayerInfo view={self} align="center" hideCount rules={state.rules} roundWind={state.roundWind} />
+        <PlayerInfo view={self} align="center" hideCount rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
     </div>
   );
@@ -115,6 +115,7 @@ function PlayerInfo({
   hideCount = false,
   rules,
   roundWind,
+  payAnim,
 }: {
   view: {
     player: GameState["players"][number];
@@ -127,6 +128,7 @@ function PlayerInfo({
   hideCount?: boolean;
   rules: GameState["rules"];
   roundWind: GameState["roundWind"];
+  payAnim: GameState["payAnim"];
 }) {
   if (!view) return <div />;
   const { player, label, isDealer, isCurrent } = view;
@@ -139,12 +141,28 @@ function PlayerInfo({
     rules,
     player.isHuman
   );
+  const delta = payAnim ? payAnim.deltas[player.index] ?? 0 : 0;
   return (
     <div
-      className={`flex max-w-[150px] flex-col gap-1 ${
+      className={`relative flex max-w-[150px] flex-col gap-1 ${
         align === "center" ? "items-center" : "items-start"
       }`}
     >
+      {payAnim && delta !== 0 && (
+        <span
+          key={payAnim.id}
+          className={`animate-pay-float pointer-events-none absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-bold ${
+            delta < 0
+              ? "text-[var(--feedback-wrong)]"
+              : "text-[var(--feedback-correct)]"
+          }`}
+        >
+          {delta < 0 ? "−" : "+"}
+          {Math.abs(delta) < 1
+            ? `${Math.round(Math.abs(delta) * 100)}¢`
+            : `$${Math.abs(delta).toFixed(2)}`}
+        </span>
+      )}
       <div className="flex items-center gap-1.5">
         <span
           className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${

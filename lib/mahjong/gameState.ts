@@ -64,6 +64,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     humanIndex,
     wall: dealt.wall,
     deadWallFlowers: [],
+    payAnim: null,
     roundWind: "east",
     turnIndex: 0, // dealer (East) starts
     phase: "await-draw",
@@ -368,11 +369,29 @@ function applyKongBonus(
   players[kongerIndex].stack = round(players[kongerIndex].stack + collected);
   const humanDelta =
     players[state.humanIndex].stack - state.players[state.humanIndex].stack;
+  return withPayAnim(
+    {
+      ...state,
+      players,
+      pnl: round(state.pnl + humanDelta),
+      log: [
+        ...state.log,
+        `${players[kongerIndex].name} collects the kong bonus.`,
+      ],
+    },
+    state.players
+  );
+}
+
+/** Attach floating payment deltas (vs `before`) for the UI to animate. */
+function withPayAnim(state: GameState, before: Player[]): GameState {
+  const deltas = state.players.map(
+    (p, i) => Math.round((p.stack - before[i].stack) * 100) / 100
+  );
+  if (deltas.every((d) => d === 0)) return state;
   return {
     ...state,
-    players,
-    pnl: round(state.pnl + humanDelta),
-    log: [...state.log, `${players[kongerIndex].name} collects the kong bonus.`],
+    payAnim: { deltas, id: (state.payAnim?.id ?? 0) + 1 },
   };
 }
 
@@ -481,11 +500,12 @@ function applyBonusPayments(
   holderIndex: number,
   added: TileId[]
 ): GameState {
-  return applyAnimalPair(
+  const after = applyAnimalPair(
     applyFlowerPayment(state, holderIndex, added),
     holderIndex,
     added
   );
+  return withPayAnim(after, state.players);
 }
 
 /** Draw the kong replacement tile, then continue (win / discard / choose). */
