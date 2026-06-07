@@ -251,8 +251,8 @@ export default function GamePage() {
         onRestart={handleRestart}
       />
 
-      {/* Table */}
-      <div className="flex flex-1 flex-col overflow-y-auto px-3 py-3">
+      {/* Table — fills the space between header and hand, no scrolling */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">
         <GameTable state={state} />
       </div>
 

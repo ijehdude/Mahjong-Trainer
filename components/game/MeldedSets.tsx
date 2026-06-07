@@ -11,7 +11,7 @@ interface Props {
 export default function MeldedSets({ melds, size = "meld" }: Props) {
   if (!melds.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex items-center gap-1">
       {melds.map((meld, i) => (
         <div
           key={i}

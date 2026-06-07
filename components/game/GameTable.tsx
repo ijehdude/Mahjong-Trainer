@@ -38,28 +38,28 @@ export default function GameTable({ state }: Props) {
   const self = seatView("self");
 
   return (
-    <div className="felt-glow relative flex flex-1 flex-col rounded-2xl border border-[rgba(255,255,255,0.05)] p-3">
+    <div className="felt-glow relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.05)] p-2">
       {/* Dealer pill */}
       <div className="flex justify-center">
-        <span className="rounded-full border border-[rgba(201,168,76,0.4)] bg-[rgba(0,0,0,0.25)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
+        <span className="rounded-full border border-[rgba(201,168,76,0.4)] bg-[rgba(0,0,0,0.25)] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
           庄家 Dealer — {WIND_NAME[dealer.seatWind]} ({dealer.name})
         </span>
       </div>
 
       {/* Across (top) */}
-      <div className="mt-3 flex justify-center">
+      <div className="mt-2 flex justify-center">
         <PlayerInfo view={across} align="center" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Middle row: left player | central discard pile | right player,
           all vertically centred — discards sit in the middle of the table. */}
-      <div className="mt-3 flex flex-1 items-center gap-2">
+      <div className="mt-2 flex min-h-0 flex-1 items-center gap-2">
         <PlayerInfo view={left} vertical rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
 
-        <div className="flex flex-1 flex-col items-center gap-2 self-stretch justify-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1 self-stretch justify-center">
           {/* Wall count */}
           <div className="text-center leading-tight">
-            <div className="text-base font-bold text-[var(--accent-gold)]">
+            <div className="text-sm font-bold text-[var(--accent-gold)]">
               {state.wall.length}
             </div>
             <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
@@ -67,7 +67,7 @@ export default function GameTable({ state }: Props) {
             </div>
           </div>
           {/* Central discard pile — up to 20 tiles per row */}
-          <div className="flex w-full flex-1 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
+          <div className="flex max-h-full w-full flex-1 items-center justify-center overflow-y-auto rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-2">
             <DiscardCenter state={state} />
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function GameTable({ state }: Props) {
       </div>
 
       {/* Self (bottom) */}
-      <div className="mt-3 flex justify-center pt-1">
+      <div className="mt-2 flex justify-center">
         <PlayerInfo view={self} align="center" hideCount rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
     </div>
@@ -142,8 +142,8 @@ function PlayerInfo({
   const delta = payAnim ? payAnim.deltas[player.index] ?? 0 : 0;
   return (
     <div
-      className={`relative flex max-w-[150px] flex-col gap-1 ${
-        align === "center" ? "items-center" : "items-start"
+      className={`relative flex flex-col gap-1 ${
+        align === "center" ? "items-center" : "max-w-[120px] items-start"
       }`}
     >
       {payAnim && delta !== 0 && (
