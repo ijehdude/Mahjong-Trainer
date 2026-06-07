@@ -51,26 +51,31 @@ export default function GameTable({ state }: Props) {
         <PlayerInfo view={across} align="center" rules={state.rules} />
       </div>
 
-      {/* Left & right players flank the table */}
-      <div className="mt-3 flex items-start justify-between gap-2">
+      {/* Middle row: left player | central discard pile | right player,
+          all vertically centred — discards sit in the middle of the table. */}
+      <div className="mt-3 flex flex-1 items-center gap-2">
         <PlayerInfo view={left} vertical rules={state.rules} />
-        <div className="flex flex-col items-center gap-1">
-          <TileComponent tileId={state.roundWind} size="meld" />
-          <div className="text-center leading-tight">
-            <div className="text-base font-bold text-[var(--accent-gold)]">
-              {state.wall.length}
-            </div>
-            <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
-              牌墙 wall
+
+        <div className="flex flex-1 flex-col items-center gap-2 self-stretch justify-center">
+          {/* Round wind + wall count */}
+          <div className="flex items-center gap-2">
+            <TileComponent tileId={state.roundWind} size="meld" />
+            <div className="text-center leading-tight">
+              <div className="text-base font-bold text-[var(--accent-gold)]">
+                {state.wall.length}
+              </div>
+              <div className="text-[8px] uppercase tracking-wider text-[var(--text-muted)]">
+                牌墙 wall
+              </div>
             </div>
           </div>
+          {/* Central discard pile — up to 12 tiles per row */}
+          <div className="flex w-full flex-1 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
+            <DiscardCenter state={state} />
+          </div>
         </div>
-        <PlayerInfo view={right} vertical rules={state.rules} />
-      </div>
 
-      {/* Central discard pile — spans the table, up to 12 tiles per row */}
-      <div className="mt-3 flex flex-1 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
-        <DiscardCenter state={state} />
+        <PlayerInfo view={right} vertical rules={state.rules} />
       </div>
 
       {/* Self (bottom) */}

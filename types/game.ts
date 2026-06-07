@@ -34,6 +34,7 @@ export const LIMIT_TAI = 5;
 
 export const DEFAULT_RULES: GameRules = {
   players: 4,
+  // Flowers, seasons and animals are always in play (not user-configurable).
   flowerTiles: true,
   animalTiles: true,
   feiTiles: false,
@@ -41,11 +42,12 @@ export const DEFAULT_RULES: GameRules = {
   minTai: 1,
   payoutRate: 0.2,
   startingStack: 100,
+  // These rules are always on; they are not exposed as settings.
   kongBonus: true,
-  heavenlyHand: false,
-  earthlyHand: false,
+  heavenlyHand: true,
+  earthlyHand: true,
+  chouPingHu: true,
   robbingKong: true,
-  chouPingHu: false,
   limitHandCap: true,
   feedbackDetail: "brief",
   coachEngine: "local",

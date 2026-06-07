@@ -9,13 +9,7 @@ import Button from "@/components/shared/Button";
 import TileComponent from "@/components/game/TileComponent";
 import StrategyGuide from "@/components/game/StrategyGuide";
 import { DEFAULT_RULES } from "@/types/game";
-import type {
-  CoachEngine,
-  FeiPayout,
-  GameRules,
-  MinTai,
-  PlayerCount,
-} from "@/types/game";
+import type { CoachEngine, GameRules, MinTai, PlayerCount } from "@/types/game";
 import { RULES_STORAGE_KEY } from "@/lib/storage";
 
 export default function SetupPage() {
@@ -35,8 +29,8 @@ export default function SetupPage() {
     "新加坡规则",
     `${rules.players}人`,
     `最低${rules.minTai}台`,
-    `$${rules.payoutRate.toFixed(2)}/台`,
-    rules.flowerTiles ? "有花" : "无花",
+    `底注 $${rules.payoutRate}`,
+    "花季动物",
   ].join(" · ");
 
   return (
@@ -80,43 +74,6 @@ export default function SetupPage() {
             </p>
           </SettingsCard>
 
-          <SettingsCard title="花牌 / 动物" en="Flowers, Seasons & Animals">
-            <ToggleRow
-              label="花牌与季牌"
-              description="Flower & season tiles — 8 bonus tiles, revealed with a replacement draw."
-              checked={rules.flowerTiles}
-              onChange={(v) => update("flowerTiles", v)}
-            />
-            <ToggleRow
-              label="动物牌 (猫鼠鸡蜈蚣)"
-              description="Animal tiles — Cat/Rat/Rooster/Centipede. +1 tai each; catching a pair (Cat+Rat or Rooster+Centipede) scores an extra tai."
-              checked={rules.animalTiles}
-              onChange={(v) => update("animalTiles", v)}
-            />
-            <ToggleRow
-              label="飛 Fei (百搭)"
-              description="Fei wildcard — 4 tiles kept in hand that substitute for any tile to complete your hand. Off by default."
-              checked={rules.feiTiles}
-              onChange={(v) => update("feiTiles", v)}
-            />
-            {rules.flowerTiles && (
-              <div className="pl-1">
-                <p className="mb-2 text-xs text-[var(--text-muted)]">
-                  花牌台数 Fei Payout
-                </p>
-                <SegmentedControl<FeiPayout>
-                  options={[
-                    { label: "无 None", value: "none" },
-                    { label: "+1台", value: "1tai" },
-                    { label: "+2台", value: "2tai" },
-                  ]}
-                  value={rules.feiPayout}
-                  onChange={(v) => update("feiPayout", v)}
-                />
-              </div>
-            )}
-          </SettingsCard>
-
           <SettingsCard
             title="最低台数"
             en="Minimum Tai"
@@ -135,14 +92,15 @@ export default function SetupPage() {
           </SettingsCard>
 
           <SettingsCard
-            title="底注 / 庄家"
-            en="Stake (non-dealer / dealer)"
-            helper="每台赔付：闲家 / 庄家（庄家加倍）· Dealer pays double."
+            title="底注"
+            en="Stake"
+            helper="赔付随台数翻倍 · Payout doubles each tai (self-draw: all pay; discard: feeder pays double)."
           >
             <SegmentedControl<number>
               options={[
                 { label: "$0.20/0.40", value: 0.2 },
                 { label: "$0.50/1", value: 0.5 },
+                { label: "$1/2", value: 1 },
                 { label: "$2/4", value: 2 },
                 { label: "$3/6", value: 3 },
               ]}
@@ -200,40 +158,22 @@ export default function SetupPage() {
           <SettingsCard title="特殊规则" en="Special Rules">
             <div className="space-y-2">
               <ToggleRow
-                label="杠牌奖励"
-                description="Kong Bonus — collect payment for declaring a kong."
-                checked={rules.kongBonus}
-                onChange={(v) => update("kongBonus", v)}
-              />
-              <ToggleRow
-                label="天胡"
-                description="Heavenly Hand — dealer wins on the first deal."
-                checked={rules.heavenlyHand}
-                onChange={(v) => update("heavenlyHand", v)}
-              />
-              <ToggleRow
-                label="地胡"
-                description="Earthly Hand — non-dealer wins on dealer's first discard."
-                checked={rules.earthlyHand}
-                onChange={(v) => update("earthlyHand", v)}
-              />
-              <ToggleRow
                 label="抢杠胡"
                 description="Robbing the Kong — win on a tile used to form an added kong (+1 tai)."
                 checked={rules.robbingKong}
                 onChange={(v) => update("robbingKong", v)}
               />
               <ToggleRow
-                label="臭平胡"
-                description="Chou Ping Hu — allow a tai-less hand to win (counts as 1 tai). Ping Hu 平胡 always scores 1 tai."
-                checked={rules.chouPingHu}
-                onChange={(v) => update("chouPingHu", v)}
-              />
-              <ToggleRow
                 label="封顶台数"
                 description="Limit Hand Cap — maximum payout capped at 5 tai."
                 checked={rules.limitHandCap}
                 onChange={(v) => update("limitHandCap", v)}
+              />
+              <ToggleRow
+                label="飛 Fei (百搭)"
+                description="Fei wildcard — 4 tiles kept in hand that substitute for any tile to complete your hand. Off by default."
+                checked={rules.feiTiles}
+                onChange={(v) => update("feiTiles", v)}
               />
             </div>
           </SettingsCard>

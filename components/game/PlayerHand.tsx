@@ -20,7 +20,6 @@ interface Props {
   interactive: boolean;
   onSelect: (tile: TileId) => void;
   seatLabel: string;
-  bet: number;
   bonusTai: number;
 }
 
@@ -33,7 +32,6 @@ export default function PlayerHand({
   interactive,
   onSelect,
   seatLabel,
-  bet,
   bonusTai,
 }: Props) {
   // Sort the concealed hand, keeping the freshly drawn tile out to the right.
@@ -52,8 +50,6 @@ export default function PlayerHand({
         <span className="text-[var(--accent-gold)]">我的手牌 Your Hand</span>
         <span>·</span>
         <span>{seatLabel}</span>
-        <span>·</span>
-        <span>${bet}/台</span>
         {bonusTai > 0 && (
           <span className="rounded bg-[rgba(201,168,76,0.2)] px-1.5 py-0.5 font-bold text-[var(--accent-gold)]">
             +{bonusTai}台

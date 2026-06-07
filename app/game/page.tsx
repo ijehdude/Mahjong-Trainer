@@ -336,7 +336,6 @@ export default function GamePage() {
           interactive={isPlayerChoose}
           onSelect={handleSelect}
           seatLabel={human.seatWind.toUpperCase()}
-          bet={rules.payoutRate}
           bonusTai={bonusTaiFor(human.flowers, human.seatWind, rules)}
         />
       </div>
