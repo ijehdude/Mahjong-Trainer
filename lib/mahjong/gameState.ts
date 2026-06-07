@@ -14,14 +14,7 @@ import { isSevenPairs, isThirteenOrphans, isWinningHand } from "./handValidator"
 import { calculateTai, computePayments } from "./taiCalculator";
 import { decomposeWin } from "./handValidator";
 import { botWantsKong, botWantsPong, chooseBotDiscard } from "./botAI";
-import {
-  countTiles,
-  isBonus,
-  isFlowerOrSeason,
-  isSuit,
-  rankOf,
-  suitOf,
-} from "./tiles";
+import { countTiles, isBonus, isSuit, rankOf, suitOf } from "./tiles";
 
 /* ===========================================================================
    Core game engine. Pure transition functions driven by the React component.
@@ -427,10 +420,12 @@ function applyAnimalPair(
 }
 
 /**
- * Flower/season seat payment. Each flower/season belongs to a seat (East=1 …
- * North=4). When one is revealed:
- *   - if the seat owner holds their own (正花): every other player pays 1*rate;
- *   - otherwise the seat owner alone pays the holder 1*rate.
+ * Flower/season seat-pair payment. Each seat (East=1 … North=4) owns a matching
+ * flower AND season (e.g. North = f4 + s4). A payment of 1*rate fires only when
+ * ONE player holds BOTH of a seat's tiles (one of them just revealed):
+ *   - if the seat owner holds their own pair (正花): every other player pays;
+ *   - otherwise the seat owner alone pays that holder.
+ * Holding only one of the two pays nothing (its tai still counts).
  */
 function applyFlowerPayment(
   state: GameState,
@@ -440,14 +435,22 @@ function applyFlowerPayment(
   if (!state.rules.flowerTiles) return state;
   let s = state;
   const round = (x: number) => Math.round(x * 100) / 100;
-  for (const t of added) {
-    if (!isFlowerOrSeason(t)) continue;
-    const ownerIndex = Number(t[1]) - 1; // E=1→0 … N=4→3
-    if (ownerIndex < 0 || ownerIndex >= s.players.length) continue; // no seat
+  const flowers = state.players[holderIndex].flowers;
+  for (let k = 1; k <= 4; k++) {
+    const ownerIndex = k - 1; // E=1→0 … N=4→3
+    if (ownerIndex >= s.players.length) continue; // no such seat
+    const f = `f${k}`;
+    const se = `s${k}`;
+    const justCompletedPair =
+      flowers.includes(f) &&
+      flowers.includes(se) &&
+      (added.includes(f) || added.includes(se));
+    if (!justCompletedPair) continue;
+
     const rate = s.rules.payoutRate;
     const players = s.players.map((p) => ({ ...p }));
     if (holderIndex === ownerIndex) {
-      // 正花 — every other player pays the owner.
+      // 正花 pair — every other player pays the owner.
       let collected = 0;
       for (let j = 0; j < players.length; j++) {
         if (j === ownerIndex) continue;
@@ -456,13 +459,18 @@ function applyFlowerPayment(
       }
       players[ownerIndex].stack = round(players[ownerIndex].stack + collected);
     } else {
-      // The seat owner alone pays the holder.
+      // A non-owner holds the seat's pair — the seat owner alone pays them.
       players[ownerIndex].stack = round(players[ownerIndex].stack - rate);
       players[holderIndex].stack = round(players[holderIndex].stack + rate);
     }
     const humanDelta =
       players[s.humanIndex].stack - s.players[s.humanIndex].stack;
-    s = { ...s, players, pnl: round(s.pnl + humanDelta) };
+    s = {
+      ...s,
+      players,
+      pnl: round(s.pnl + humanDelta),
+      log: [...s.log, `${players[holderIndex].name} — seat flower pair.`],
+    };
   }
   return s;
 }

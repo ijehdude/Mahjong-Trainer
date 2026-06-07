@@ -2,9 +2,9 @@ import type { GameRules } from "@/types/game";
 import type { Meld } from "@/types/game";
 import { LIMIT_TAI } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
-import { ANIMAL_NAME, DRAGONS, WINDS } from "@/types/tiles";
+import { DRAGONS, WINDS } from "@/types/tiles";
 import { Decomposition, isSevenPairs, isThirteenOrphans } from "./handValidator";
-import { isAnimal, isFlowerOrSeason, isSuit, suitOf } from "./tiles";
+import { isFlowerOrSeason, isSuit, suitOf } from "./tiles";
 
 /* ===========================================================================
    Singapore tai (points) scoring, including special / limit hands.
@@ -103,20 +103,8 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
         breakdown.push({ label: "All 4 seasons 一台花", tai: 1 });
     }
 
-    // Animals — 1 tai each. The cat+rat / rooster+centipede pair bonuses are
-    // paid immediately when completed (see applyAnimalPair in gameState).
-    if (rules.animalTiles) {
-      const animals = bonusTiles.filter(isAnimal);
-      for (const a of animals)
-        breakdown.push({
-          label: `${ANIMAL_NAME[a as keyof typeof ANIMAL_NAME]} ${
-            { cat: "猫", rat: "鼠", rooster: "鸡", centipede: "蜈" }[
-              a as "cat" | "rat" | "rooster" | "centipede"
-            ]
-          }`,
-          tai: 1,
-        });
-    }
+    // Animals never score tai. A single animal pays nothing; only the
+    // cat+rat / rooster+centipede pair pays out immediately (see gameState).
   };
 
   // ---- Special hands with no standard 4-sets-1-pair decomposition ---------
@@ -300,6 +288,6 @@ export function bonusTaiFor(
     if (flowerNums.size === 4) t += 1;
     if (seasonNums.size === 4) t += 1;
   }
-  if (rules.animalTiles) t += flowers.filter(isAnimal).length;
+  // Animals score no tai (the pair is an immediate payout, not points).
   return t;
 }
