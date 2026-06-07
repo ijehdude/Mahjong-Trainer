@@ -76,6 +76,8 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   } = ctx;
   const breakdown: { label: string; tai: number }[] = [];
   let limit = false;
+  // Holding any flower/season/animal turns a bare win into Chou Ping Hu 臭平胡.
+  const hasBonus = bonusTiles.length > 0;
 
   // Kong bonus and the animal-pair bonus are paid immediately (see gameState),
   // not as winning-hand tai. Self-draw adds NO tai — its reward comes from the
@@ -133,7 +135,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     });
     limit = true;
     addBonus();
-    return finalize(breakdown, rules, limit);
+    return finalize(breakdown, rules, hasBonus, limit);
   }
 
   // ---- Special hands with no standard 4-sets-1-pair decomposition ---------
@@ -149,7 +151,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     } else {
       addBonus();
     }
-    return finalize(breakdown, rules, limit);
+    return finalize(breakdown, rules, hasBonus, limit);
   }
 
   const sets = decomposition.sets;
@@ -227,28 +229,34 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     }
   }
 
-  // ---- Ping Hu (平胡) — all sequences, plain (non-value) pair, no flush ----
+  // ---- Ping Hu (平胡) — all sequences, plain (non-value) pair, no flush.
+  // Holding any flower/season/animal makes it Chou Ping Hu 臭平胡 instead.
   const pairTile = decomposition.pair;
   const pairIsValue =
     pairTile === seatWind ||
     pairTile === roundWind ||
     (DRAGONS as string[]).includes(pairTile);
   if (sets.every((s) => s.type === "sequence") && !pairIsValue && !flush)
-    breakdown.push({ label: "Ping Hu 平胡", tai: 1 });
+    breakdown.push({
+      label: hasBonus ? "Chou Ping Hu 臭平胡" : "Ping Hu 平胡",
+      tai: 1,
+    });
 
   addBonus();
-  return finalize(breakdown, rules, limit);
+  return finalize(breakdown, rules, hasBonus, limit);
 }
 
 function finalize(
   breakdown: { label: string; tai: number }[],
   rules: GameRules,
+  hasBonus: boolean,
   limit: boolean
 ): TaiResult {
   const rawTai = breakdown.reduce((s, b) => s + b.tai, 0);
   let tai = rawTai;
-  // Chou Ping Hu (臭平胡): a tai-less hand still wins, counting as 1 tai.
-  if (tai === 0 && rules.chouPingHu) {
+  // Chou Ping Hu (臭平胡): a tai-less hand still wins as 1 tai, but only if the
+  // winner holds a flower/season/animal (otherwise it has no tai and can't win).
+  if (tai === 0 && hasBonus) {
     tai = 1;
     breakdown.push({ label: "Chou Ping Hu 臭平胡", tai: 1 });
   }
@@ -322,5 +330,7 @@ export function bonusTaiFor(
     const ac = flowers.filter(isAnimal).length;
     t += ac + (ac === 4 ? 1 : 0);
   }
+  // Holding any bonus tile guarantees at least 1 tai (Chou Ping Hu 臭平胡).
+  if (flowers.length > 0 && t === 0) t = 1;
   return t;
 }

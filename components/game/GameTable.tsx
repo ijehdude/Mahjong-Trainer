@@ -69,7 +69,7 @@ export default function GameTable({ state }: Props) {
               </div>
             </div>
           </div>
-          {/* Central discard pile — up to 12 tiles per row */}
+          {/* Central discard pile — up to 20 tiles per row */}
           <div className="flex w-full flex-1 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-3">
             <DiscardCenter state={state} />
           </div>
@@ -98,7 +98,7 @@ function DiscardCenter({ state }: { state: GameState }) {
   }
   return (
     // ~12 discard tiles (32px + gap) per row before wrapping.
-    <div className="flex max-w-[420px] flex-wrap justify-center gap-0.5">
+    <div className="flex max-w-[700px] flex-wrap justify-center gap-0.5">
       {pile.map((d, i) => (
         <TileComponent
           key={i}
@@ -140,7 +140,7 @@ function PlayerInfo({
     >
       <div className="flex items-center gap-1.5">
         <span
-          className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+          className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
             isCurrent
               ? "bg-[var(--accent-gold)] text-[var(--bg-dark)]"
               : "text-[var(--text-muted)]"
