@@ -23,6 +23,7 @@ import {
   type Verdict,
 } from "@/lib/claude/strategyFeedback";
 import { evaluateDiscardLocal } from "@/lib/mahjong/localStrategy";
+import { bonusTaiFor } from "@/lib/mahjong/taiCalculator";
 import { tileName } from "@/lib/mahjong/tiles";
 import ScoreHeader from "@/components/game/ScoreHeader";
 import GameTable from "@/components/game/GameTable";
@@ -336,6 +337,7 @@ export default function GamePage() {
           onSelect={handleSelect}
           seatLabel={human.seatWind.toUpperCase()}
           bet={rules.payoutRate}
+          bonusTai={bonusTaiFor(human.flowers, human.seatWind, rules)}
         />
       </div>
 

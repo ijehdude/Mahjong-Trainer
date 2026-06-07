@@ -3,6 +3,7 @@
 import type { GameState, RelativeSeat } from "@/types/game";
 import { WIND_NAME } from "@/types/tiles";
 import { indexForSeat } from "@/lib/mahjong/gameState";
+import { bonusTaiFor } from "@/lib/mahjong/taiCalculator";
 import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
@@ -47,12 +48,12 @@ export default function GameTable({ state }: Props) {
 
       {/* Across (top) */}
       <div className="mt-3 flex justify-center">
-        <PlayerInfo view={across} align="center" />
+        <PlayerInfo view={across} align="center" rules={state.rules} />
       </div>
 
       {/* Left & right players flank the table */}
       <div className="mt-3 flex items-start justify-between gap-2">
-        <PlayerInfo view={left} vertical />
+        <PlayerInfo view={left} vertical rules={state.rules} />
         <div className="flex flex-col items-center gap-1">
           <TileComponent tileId={state.roundWind} size="meld" />
           <div className="text-center leading-tight">
@@ -64,7 +65,7 @@ export default function GameTable({ state }: Props) {
             </div>
           </div>
         </div>
-        <PlayerInfo view={right} vertical />
+        <PlayerInfo view={right} vertical rules={state.rules} />
       </div>
 
       {/* Central discard pile — spans the table, up to 12 tiles per row */}
@@ -74,7 +75,7 @@ export default function GameTable({ state }: Props) {
 
       {/* Self (bottom) */}
       <div className="mt-3 flex justify-center pt-1">
-        <PlayerInfo view={self} align="center" hideCount />
+        <PlayerInfo view={self} align="center" hideCount rules={state.rules} />
       </div>
     </div>
   );
@@ -110,6 +111,7 @@ function PlayerInfo({
   align = "start",
   vertical = false,
   hideCount = false,
+  rules,
 }: {
   view: {
     player: GameState["players"][number];
@@ -120,9 +122,11 @@ function PlayerInfo({
   align?: "start" | "center";
   vertical?: boolean;
   hideCount?: boolean;
+  rules: GameState["rules"];
 }) {
   if (!view) return <div />;
   const { player, label, isDealer, isCurrent } = view;
+  const tai = bonusTaiFor(player.flowers, player.seatWind, rules);
   return (
     <div
       className={`flex max-w-[150px] flex-col gap-1 ${
@@ -142,6 +146,11 @@ function PlayerInfo({
         {isDealer && (
           <span className="rounded bg-[rgba(192,57,43,0.25)] px-1 py-0.5 text-[8px] font-bold uppercase text-[#e8a59d]">
             庄
+          </span>
+        )}
+        {tai > 0 && (
+          <span className="rounded bg-[rgba(201,168,76,0.2)] px-1 py-0.5 text-[9px] font-bold text-[var(--accent-gold)]">
+            +{tai}台
           </span>
         )}
         {!hideCount && (

@@ -278,3 +278,28 @@ export function computePayments(opts: {
   }
   return payments.map((p) => Math.round(p * 100) / 100);
 }
+
+/**
+ * Guaranteed tai already visible from a player's revealed bonus tiles: seat
+ * flowers/seasons (正花), the complete-set bonuses, and animals. Used to show a
+ * live tai indicator on the table.
+ */
+export function bonusTaiFor(
+  flowers: TileId[],
+  seatWind: Wind,
+  rules: GameRules
+): number {
+  let t = 0;
+  if (rules.flowerTiles) {
+    const seatNum = SEAT_NUMBER[seatWind];
+    const fs = flowers.filter(isFlowerOrSeason);
+    const matching = fs.filter((x) => Number(x[1]) === seatNum);
+    t += FEI_TAI[rules.feiPayout] * matching.length;
+    const flowerNums = new Set(fs.filter((x) => x[0] === "f").map((x) => x[1]));
+    const seasonNums = new Set(fs.filter((x) => x[0] === "s").map((x) => x[1]));
+    if (flowerNums.size === 4) t += 1;
+    if (seasonNums.size === 4) t += 1;
+  }
+  if (rules.animalTiles) t += flowers.filter(isAnimal).length;
+  return t;
+}

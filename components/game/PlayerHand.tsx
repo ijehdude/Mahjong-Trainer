@@ -21,6 +21,7 @@ interface Props {
   onSelect: (tile: TileId) => void;
   seatLabel: string;
   bet: number;
+  bonusTai: number;
 }
 
 export default function PlayerHand({
@@ -33,6 +34,7 @@ export default function PlayerHand({
   onSelect,
   seatLabel,
   bet,
+  bonusTai,
 }: Props) {
   // Sort the concealed hand, keeping the freshly drawn tile out to the right.
   let concealed = [...hand];
@@ -52,6 +54,11 @@ export default function PlayerHand({
         <span>{seatLabel}</span>
         <span>·</span>
         <span>${bet}/台</span>
+        {bonusTai > 0 && (
+          <span className="rounded bg-[rgba(201,168,76,0.2)] px-1.5 py-0.5 font-bold text-[var(--accent-gold)]">
+            +{bonusTai}台
+          </span>
+        )}
         {flowers.length > 0 && (
           <span className="flex items-center gap-1 rounded-md bg-[rgba(201,168,76,0.12)] px-1.5 py-0.5">
             <span className="text-[var(--accent-gold)]">花/季 {flowers.length}</span>

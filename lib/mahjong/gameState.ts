@@ -14,7 +14,14 @@ import { isSevenPairs, isThirteenOrphans, isWinningHand } from "./handValidator"
 import { calculateTai, computePayments } from "./taiCalculator";
 import { decomposeWin } from "./handValidator";
 import { botWantsKong, botWantsPong, chooseBotDiscard } from "./botAI";
-import { countTiles, isBonus, isSuit, rankOf, suitOf } from "./tiles";
+import {
+  countTiles,
+  isBonus,
+  isFlowerOrSeason,
+  isSuit,
+  rankOf,
+  suitOf,
+} from "./tiles";
 
 /* ===========================================================================
    Core game engine. Pure transition functions driven by the React component.
@@ -86,7 +93,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
   };
   // Animal pairs dealt in the opening flowers pay out immediately.
   for (let i = 0; i < players.length; i++)
-    state = applyAnimalPair(state, i, state.players[i].flowers);
+    state = applyBonusPayments(state, i, state.players[i].flowers);
   return state;
 }
 
@@ -216,7 +223,7 @@ function doDraw(state: GameState): GameState {
         : state.log,
   };
   if (flowersAdded.length)
-    next = applyAnimalPair(next, state.turnIndex, flowersAdded);
+    next = applyBonusPayments(next, state.turnIndex, flowersAdded);
 
   if (player.isHuman) {
     // Human draws then chooses; flag self-draw win + kong availability.
@@ -419,6 +426,60 @@ function applyAnimalPair(
   return s;
 }
 
+/**
+ * Flower/season seat payment. Each flower/season belongs to a seat (East=1 …
+ * North=4). When one is revealed:
+ *   - if the seat owner holds their own (正花): every other player pays 1*rate;
+ *   - otherwise the seat owner alone pays the holder 1*rate.
+ */
+function applyFlowerPayment(
+  state: GameState,
+  holderIndex: number,
+  added: TileId[]
+): GameState {
+  if (!state.rules.flowerTiles) return state;
+  let s = state;
+  const round = (x: number) => Math.round(x * 100) / 100;
+  for (const t of added) {
+    if (!isFlowerOrSeason(t)) continue;
+    const ownerIndex = Number(t[1]) - 1; // E=1→0 … N=4→3
+    if (ownerIndex < 0 || ownerIndex >= s.players.length) continue; // no seat
+    const rate = s.rules.payoutRate;
+    const players = s.players.map((p) => ({ ...p }));
+    if (holderIndex === ownerIndex) {
+      // 正花 — every other player pays the owner.
+      let collected = 0;
+      for (let j = 0; j < players.length; j++) {
+        if (j === ownerIndex) continue;
+        players[j].stack = round(players[j].stack - rate);
+        collected += rate;
+      }
+      players[ownerIndex].stack = round(players[ownerIndex].stack + collected);
+    } else {
+      // The seat owner alone pays the holder.
+      players[ownerIndex].stack = round(players[ownerIndex].stack - rate);
+      players[holderIndex].stack = round(players[holderIndex].stack + rate);
+    }
+    const humanDelta =
+      players[s.humanIndex].stack - s.players[s.humanIndex].stack;
+    s = { ...s, players, pnl: round(s.pnl + humanDelta) };
+  }
+  return s;
+}
+
+/** Apply all immediate bonus-tile payments (flowers/seasons + animal pairs). */
+function applyBonusPayments(
+  state: GameState,
+  holderIndex: number,
+  added: TileId[]
+): GameState {
+  return applyAnimalPair(
+    applyFlowerPayment(state, holderIndex, added),
+    holderIndex,
+    added
+  );
+}
+
 /** Draw the kong replacement tile, then continue (win / discard / choose). */
 function afterKongDraw(state: GameState, index: number): GameState {
   if (state.wall.length === 0) return endExhausted(state);
@@ -439,7 +500,7 @@ function afterKongDraw(state: GameState, index: number): GameState {
     claim: null,
     pendingKong: null,
   };
-  if (flowersAdded.length) s = applyAnimalPair(s, index, flowersAdded);
+  if (flowersAdded.length) s = applyBonusPayments(s, index, flowersAdded);
   if (me.isHuman) {
     return {
       ...s,
@@ -1011,6 +1072,6 @@ export function startNextHand(state: GameState): GameState {
     log: [...state.log, `— Hand ${state.handNumber + 1} —`],
   };
   for (let i = 0; i < players.length; i++)
-    next = applyAnimalPair(next, i, next.players[i].flowers);
+    next = applyBonusPayments(next, i, next.players[i].flowers);
   return next;
 }
