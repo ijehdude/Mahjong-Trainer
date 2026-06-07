@@ -103,10 +103,12 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
         breakdown.push({ label: "All 4 seasons 一台花", tai: 1 });
     }
 
-    // Animals — +1 tai each (paired or not). The cat+rat / rooster+centipede
-    // pair additionally pays out immediately (see applyAnimalPair in gameState).
+    // Animals — +1 tai each (paired or not), plus a bonus tai for all four
+    // (so 4 animals = 5 tai). The cat+rat / rooster+centipede pair additionally
+    // pays out immediately (see applyAnimalPair in gameState).
     if (rules.animalTiles) {
-      for (const a of bonusTiles.filter(isAnimal))
+      const animals = bonusTiles.filter(isAnimal);
+      for (const a of animals)
         breakdown.push({
           label: `${ANIMAL_NAME[a as keyof typeof ANIMAL_NAME]} ${
             { cat: "猫", rat: "鼠", rooster: "鸡", centipede: "蜈" }[
@@ -115,6 +117,8 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
           }`,
           tai: 1,
         });
+      if (animals.length === 4)
+        breakdown.push({ label: "All animals 四宝", tai: 1 });
     }
   };
 
@@ -299,7 +303,10 @@ export function bonusTaiFor(
     if (flowerNums.size === 4) t += 1;
     if (seasonNums.size === 4) t += 1;
   }
-  // Animals score +1 tai each (the pair additionally pays out in cash).
-  if (rules.animalTiles) t += flowers.filter(isAnimal).length;
+  // Animals score +1 tai each, +1 bonus for all four (so 4 = 5 tai).
+  if (rules.animalTiles) {
+    const ac = flowers.filter(isAnimal).length;
+    t += ac + (ac === 4 ? 1 : 0);
+  }
   return t;
 }
