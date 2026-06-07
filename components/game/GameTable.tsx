@@ -54,7 +54,7 @@ export default function GameTable({ state }: Props) {
       {/* Middle row: left player | central discard pile | right player,
           all vertically centred — discards sit in the middle of the table. */}
       <div className="mt-2 flex min-h-0 flex-1 items-center gap-2">
-        <PlayerInfo view={left} vertical rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={left} vertical side="left" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1 self-stretch justify-center">
           {/* Wall count */}
@@ -72,7 +72,7 @@ export default function GameTable({ state }: Props) {
           </div>
         </div>
 
-        <PlayerInfo view={right} vertical rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={right} vertical side="right" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Self (bottom) */}
@@ -113,6 +113,7 @@ function PlayerInfo({
   align = "start",
   vertical = false,
   hideCount = false,
+  side,
   rules,
   roundWind,
   payAnim,
@@ -126,12 +127,14 @@ function PlayerInfo({
   align?: "start" | "center";
   vertical?: boolean;
   hideCount?: boolean;
+  side?: "left" | "right";
   rules: GameState["rules"];
   roundWind: GameState["roundWind"];
   payAnim: GameState["payAnim"];
 }) {
   if (!view) return <div />;
   const { player, label, isDealer, isCurrent } = view;
+  const rot = side === "left" ? "rotate-90" : side === "right" ? "-rotate-90" : "";
   const tai = taiHintFor(
     player.flowers,
     player.melds,
@@ -189,17 +192,27 @@ function PlayerInfo({
         )}
       </div>
       {player.melds.length > 0 && (
-        <MeldedSets melds={player.melds} size="mini" />
+        <MeldedSets
+          melds={player.melds}
+          size="mini"
+          orient={side ?? "up"}
+        />
       )}
       {player.flowers.length > 0 && (
         <div
-          className={`flex flex-wrap items-center gap-0.5 rounded bg-[rgba(201,168,76,0.12)] px-1 py-0.5 ${
-            vertical ? "max-w-[80px]" : ""
-          }`}
+          className={`flex items-center gap-0.5 rounded bg-[rgba(201,168,76,0.12)] px-1 py-0.5 ${
+            side ? "flex-col" : "flex-wrap"
+          } ${vertical && !side ? "max-w-[80px]" : ""}`}
         >
-          {player.flowers.map((t) => (
-            <TileComponent key={t} tileId={t} size="discard" />
-          ))}
+          {player.flowers.map((t) =>
+            side ? (
+              <span key={t} className="flex h-6 w-8 items-center justify-center">
+                <TileComponent tileId={t} size="mini" className={rot} />
+              </span>
+            ) : (
+              <TileComponent key={t} tileId={t} size="discard" />
+            )
+          )}
         </div>
       )}
     </div>
