@@ -330,7 +330,8 @@ export function bonusTaiFor(
     const ac = flowers.filter(isAnimal).length;
     t += ac + (ac === 4 ? 1 : 0);
   }
-  // Holding any bonus tile guarantees at least 1 tai (Chou Ping Hu 臭平胡).
-  if (flowers.length > 0 && t === 0) t = 1;
+  // Only ACTUAL scoring tiles count here. A non-matching flower/season is 0 tai
+  // — Chou Ping Hu (holding a bonus tile) only matters when you actually win a
+  // tai-less hand, so it is NOT shown as a guaranteed in-play tai.
   return t;
 }

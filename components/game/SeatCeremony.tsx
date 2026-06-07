@@ -10,8 +10,8 @@ import Button from "@/components/shared/Button";
 
 /* ===========================================================================
    Interactive seat ceremony. The player rolls, the bots roll, then players draw
-   face-down wind tiles in rank order (highest first). The player CHOOSES which
-   face-down tile to take; the drawn wind becomes their seat (East = dealer).
+   face-down wind tiles in rank order (highest first). Ties are broken by the
+   tied players re-rolling — triggered manually by the player, never automatic.
    =========================================================================== */
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
 
 const rollDie = () => 1 + Math.floor(Math.random() * 6);
 const roll3 = () => [rollDie(), rollDie(), rollDie()];
+const sum3 = () => roll3().reduce((a, b) => a + b, 0);
 
 const PIP_LAYOUT: Record<number, number[]> = {
   1: [4],
@@ -55,72 +56,78 @@ function Die({ value, rolling }: { value: number; rolling?: boolean }) {
   );
 }
 
-type Phase = "ready" | "rolling" | "picking" | "revealing" | "done";
+type Phase =
+  | "ready"
+  | "rolling"
+  | "tie"
+  | "rerolling"
+  | "picking"
+  | "revealing"
+  | "done";
+
+/** Tied players sharing an identical key (total + re-roll history). */
+function tieGroupsOf(keys: number[][]): number[][] {
+  const groups: Record<string, number[]> = {};
+  keys.forEach((k, i) => ((groups[k.join(",")] ??= []).push(i)));
+  return Object.values(groups).filter((g) => g.length > 1);
+}
 
 export default function SeatCeremony({ rules, onSeated }: Props) {
   const n = rules.players;
 
-  // Fixed up front: each roller's dice, and the hidden wind under each tile.
-  const plan = useRef<{
-    dice: number[][];
-    totals: number[];
-    rerolls: number[][]; // extra roll totals used to break ties (per roller)
-    pickOrder: number[]; // roller indices, highest total first
-    rank: number[]; // roller index -> pick position
-    windAt: Wind[]; // wind hidden under each face-down tile position
-  } | null>(null);
-  if (!plan.current) {
+  // Fixed up front: each roller's initial dice and the hidden wind under each
+  // tile. Re-rolls are appended to `keys` (state) as the player triggers them.
+  const fixed = useRef<{ dice: number[][]; totals: number[]; windAt: Wind[] }>(
+    null as unknown as { dice: number[][]; totals: number[]; windAt: Wind[] }
+  );
+  if (!fixed.current) {
     const dice = Array.from({ length: n }, roll3);
-    const totals = dice.map((d) => d[0] + d[1] + d[2]);
-    // Break ties the real way: tied players re-roll among themselves until
-    // their order is decided. keys[i] = [total, reroll1, reroll2, …].
-    const keys: number[][] = totals.map((t) => [t]);
-    for (let guard = 0; guard < 30; guard++) {
-      const groups: Record<string, number[]> = {};
-      for (let i = 0; i < n; i++) (groups[keys[i].join(",")] ??= []).push(i);
-      const tied = Object.values(groups).filter((g) => g.length > 1);
-      if (tied.length === 0) break;
-      for (const g of tied)
-        for (const i of g) keys[i].push(roll3().reduce((a, b) => a + b, 0));
-    }
-    const cmp = (a: number, b: number) => {
-      const ka = keys[a];
-      const kb = keys[b];
-      for (let d = 0; d < Math.max(ka.length, kb.length); d++) {
-        const va = ka[d] ?? 0;
-        const vb = kb[d] ?? 0;
-        if (va !== vb) return vb - va; // higher first
-      }
-      return 0;
-    };
-    const pickOrder = Array.from({ length: n }, (_, i) => i).sort(cmp);
-    const rank: number[] = new Array(n).fill(0);
-    pickOrder.forEach((r, pos) => (rank[r] = pos));
-    plan.current = {
+    fixed.current = {
       dice,
-      totals,
-      rerolls: keys.map((k) => k.slice(1)),
-      pickOrder,
-      rank,
+      totals: dice.map((d) => d[0] + d[1] + d[2]),
       windAt: shuffle(WINDS.slice(0, n)),
     };
   }
-  const { dice, totals, rerolls, pickOrder, rank, windAt } = plan.current;
-  const hadTie = rerolls.some((r) => r.length > 0);
+  const { dice, totals, windAt } = fixed.current;
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [rolledCount, setRolledCount] = useState(0);
   const [tumble, setTumble] = useState([1, 1, 1]);
+  const [rerollTumble, setRerollTumble] = useState(7);
+  const [keys, setKeys] = useState<number[][]>(() => totals.map((t) => [t]));
   const [pickStep, setPickStep] = useState(0);
   const [takenBy, setTakenBy] = useState<(number | null)[]>(
     new Array(n).fill(null)
   );
   const [flipped, setFlipped] = useState(0);
 
+  const tieGroups = useMemo(() => tieGroupsOf(keys), [keys]);
+  const tiedSet = useMemo(() => new Set(tieGroups.flat()), [tieGroups]);
+  const hasTie = tieGroups.length > 0;
+
+  const { pickOrder, rank } = useMemo(() => {
+    const cmp = (a: number, b: number) => {
+      const ka = keys[a];
+      const kb = keys[b];
+      for (let d = 0; d < Math.max(ka.length, kb.length); d++) {
+        const va = ka[d] ?? 0;
+        const vb = kb[d] ?? 0;
+        if (va !== vb) return vb - va;
+      }
+      return 0;
+    };
+    const order = Array.from({ length: n }, (_, i) => i).sort(cmp);
+    const r = new Array(n).fill(0);
+    order.forEach((p, pos) => (r[p] = pos));
+    return { pickOrder: order, rank: r };
+  }, [keys, n]);
+
   const currentPicker = pickOrder[pickStep];
   const yourTurn = phase === "picking" && currentPicker === 0;
+  const orderSettled =
+    phase === "picking" || phase === "revealing" || phase === "done";
 
-  // ---- Rolling animation ------------------------------------------------
+  // ---- Initial rolling animation ----------------------------------------
   useEffect(() => {
     if (phase !== "rolling") return;
     const timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -134,13 +141,36 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
     for (let b = 1; b < n; b++)
       timeouts.push(setTimeout(() => setRolledCount(b + 1), 900 + b * 650));
     timeouts.push(
-      setTimeout(() => setPhase("picking"), 900 + (n - 1) * 650 + 500)
+      setTimeout(
+        () => setPhase(tieGroupsOf(keys).length > 0 ? "tie" : "picking"),
+        900 + (n - 1) * 650 + 500
+      )
     );
     return () => {
       clearInterval(interval);
       timeouts.forEach(clearTimeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, n]);
+
+  // ---- Re-roll animation (manual) ---------------------------------------
+  useEffect(() => {
+    if (phase !== "rerolling") return;
+    const interval = setInterval(() => setRerollTumble(sum3()), 80);
+    const t = setTimeout(() => {
+      clearInterval(interval);
+      const groups = tieGroupsOf(keys);
+      const next = keys.map((k) => [...k]);
+      for (const g of groups) for (const i of g) next[i].push(sum3());
+      setKeys(next);
+      setPhase(tieGroupsOf(next).length > 0 ? "tie" : "picking");
+    }, 900);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // ---- Auto-pick for bots; wait for the human ---------------------------
   useEffect(() => {
@@ -217,6 +247,9 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
           const hasRolled = rolledCount > i;
           const rolling = phase === "rolling" && rolledCount === i && i === 0;
           const picking = phase === "picking" && currentPicker === i;
+          const isTied = tiedSet.has(i);
+          const tieHighlight = (phase === "tie" || phase === "rerolling") && isTied;
+          const rerolls = keys[i].slice(1);
           return (
             <div
               key={i}
@@ -224,7 +257,9 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
                 i === 0
                   ? "border-[var(--accent-gold)]/50 bg-[rgba(201,168,76,0.08)]"
                   : "border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)]"
-              } ${picking ? "ring-1 ring-[var(--accent-gold)]" : ""}`}
+              } ${picking ? "ring-1 ring-[var(--accent-gold)]" : ""} ${
+                tieHighlight ? "ring-1 ring-[#e8a59d]" : ""
+              }`}
             >
               <span
                 className={`w-11 shrink-0 text-[11px] font-bold uppercase ${
@@ -250,25 +285,19 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
               </div>
               {/* tie re-roll value(s) */}
               <div className="w-12 text-center text-[10px] font-semibold text-[#e8a59d]">
-                {phase !== "ready" &&
-                phase !== "rolling" &&
-                rerolls[i].length > 0
-                  ? `↻ ${rerolls[i].join("/")}`
-                  : ""}
+                {phase === "rerolling" && isTied
+                  ? `↻ ${rerollTumble}`
+                  : rerolls.length > 0
+                    ? `↻ ${rerolls.join("/")}`
+                    : ""}
               </div>
               <div className="ml-auto text-right text-[11px] font-bold text-[var(--accent-gold)]">
-                {phase !== "ready" && phase !== "rolling" ? `#${rank[i] + 1}` : ""}
+                {orderSettled ? `#${rank[i] + 1}` : ""}
               </div>
             </div>
           );
         })}
       </div>
-
-      {hadTie && phase !== "ready" && phase !== "rolling" && (
-        <p className="mt-2 text-[11px] text-[#e8a59d]">
-          平手重掷 · ties broken by a re-roll (↻)
-        </p>
-      )}
 
       {/* Tile pool */}
       {(phase === "picking" || phase === "revealing" || phase === "done") && (
@@ -324,6 +353,25 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
 
         {phase === "rolling" && (
           <p className="text-sm text-[var(--text-muted)]">投掷中… rolling</p>
+        )}
+
+        {(phase === "tie" || phase === "rerolling") && (
+          <>
+            <p className="mb-3 text-sm font-semibold text-[#e8a59d]">
+              {tiedSet.has(0)
+                ? "平手！轮到你重掷 · Tie — your re-roll"
+                : "平手！点击重掷 · Tie — tap to re-roll"}
+            </p>
+            <Button
+              variant="gold"
+              fullWidth
+              disabled={phase === "rerolling"}
+              onClick={() => setPhase("rerolling")}
+              className="py-3.5 text-base font-bold tracking-wide"
+            >
+              🎲 重掷 · RE-ROLL
+            </Button>
+          </>
         )}
 
         {phase === "picking" && (
