@@ -82,17 +82,20 @@ export default function GamePage() {
     const auto =
       state.phase === "await-draw" ||
       state.phase === "await-discard" ||
-      state.phase === "await-claims";
+      state.phase === "await-claims" ||
+      state.phase === "bonus-reveal";
     if (!auto) return;
 
     const isHumanDraw =
       state.phase === "await-draw" && state.players[state.turnIndex].isHuman;
     const delay =
-      state.phase === "await-claims"
-        ? 650
-        : isHumanDraw
-          ? 320
-          : 600;
+      state.phase === "bonus-reveal"
+        ? 750 // let the bonus tile show in hand before it moves to the table
+        : state.phase === "await-claims"
+          ? 650
+          : isHumanDraw
+            ? 320
+            : 600;
 
     const id = setTimeout(() => {
       setState((s) => (s ? advance(s) : s));
@@ -332,6 +335,7 @@ export default function GamePage() {
           melds={human.melds}
           flowers={human.flowers}
           drawnTile={state.drawnTile}
+          pendingBonus={state.pendingBonus}
           selected={selected}
           interactive={isPlayerChoose}
           onSelect={handleSelect}

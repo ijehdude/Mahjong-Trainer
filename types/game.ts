@@ -80,6 +80,7 @@ export interface Player {
 export type GamePhase =
   | "await-draw" // current player must draw from the wall
   | "await-discard" // current player must discard (no draw, e.g. after a claim)
+  | "bonus-reveal" // human drew a flower/season/animal; show it before settling
   | "player-choose" // human's turn: pick a tile to discard / declare win
   | "player-claim" // human may claim the last discard (pong/kong/chi/win)
   | "await-claims" // engine resolves claims on the last discard
@@ -150,6 +151,8 @@ export interface GameState {
   kongOptions: KongOption[];
   /** The tile the human just drew (rendered apart on the right of the hand). */
   drawnTile: TileId | null;
+  /** A bonus tile the human just drew, shown in hand before moving to table. */
+  pendingBonus: TileId | null;
   handNumber: number;
   result: WinResult | null;
   exhausted: boolean;

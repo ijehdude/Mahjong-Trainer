@@ -75,6 +75,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     canSelfDrawWin: false,
     kongOptions: [],
     drawnTile: null,
+    pendingBonus: null,
     handNumber: 1,
     result: null,
     exhausted: false,
@@ -186,27 +187,27 @@ export function advance(state: GameState): GameState {
       return doBotDiscard(state);
     case "await-claims":
       return resolveClaims(state, false, false);
+    case "bonus-reveal":
+      return settleBonusAndDraw(state);
     default:
       return state;
   }
 }
 
 function doDraw(state: GameState): GameState {
+  if (state.wall.length === 0) return endExhausted(state);
   const player = state.players[state.turnIndex];
 
-  // Wall exhausted -> draw (no winner).
-  if (state.wall.length === 0) {
-    return endExhausted(state);
-  }
+  // The human draws one tile at a time so a bonus can be shown in hand before
+  // moving to the table (see the "bonus-reveal" phase). Bots resolve instantly.
+  if (player.isHuman) return doHumanDraw(state);
 
   const { tile, wall, flowersAdded } = drawLiveTile(state.wall, player);
   if (tile === null) return endExhausted(state);
-
   const players = state.players.map((p) => ({ ...p }));
   const me = players[state.turnIndex];
   me.hand = [...me.hand, tile];
   if (flowersAdded.length) me.flowers = [...me.flowers, ...flowersAdded];
-
   let next: GameState = {
     ...state,
     players,
@@ -218,21 +219,55 @@ function doDraw(state: GameState): GameState {
   };
   if (flowersAdded.length)
     next = applyBonusPayments(next, state.turnIndex, flowersAdded);
+  return botPostDraw(next, state.turnIndex);
+}
 
-  if (player.isHuman) {
-    // Human draws then chooses; flag self-draw win + kong availability.
+/** Human draws a single tile. A bonus pauses in "bonus-reveal" before settling. */
+function doHumanDraw(state: GameState): GameState {
+  if (state.wall.length === 0) return endExhausted(state);
+  const wall = [...state.wall];
+  const tile = wall.shift()!;
+  if (isBonus(tile)) {
+    // Show it in hand; the engine settles it (to the table + payment) and
+    // draws the next tile when "bonus-reveal" is advanced.
     return {
-      ...next,
-      phase: "player-choose",
-      canSelfDrawWin: meetsMinTai(next, state.turnIndex, null),
-      kongOptions: detectKongOptions(me),
-      drawnTile: tile,
+      ...state,
+      wall,
+      phase: "bonus-reveal",
+      pendingBonus: tile,
+      drawnTile: null,
       lastDiscard: null,
     };
   }
+  const players = state.players.map((p) => ({ ...p }));
+  const me = players[state.humanIndex];
+  me.hand = [...me.hand, tile];
+  const next: GameState = { ...state, players, wall };
+  return {
+    ...next,
+    phase: "player-choose",
+    canSelfDrawWin: meetsMinTai(next, state.humanIndex, null),
+    kongOptions: detectKongOptions(me),
+    drawnTile: tile,
+    lastDiscard: null,
+  };
+}
 
-  // Bot: win / kong / discard.
-  return botPostDraw(next, state.turnIndex);
+/** Settle a revealed bonus (move to table + pay), then draw the next tile. */
+function settleBonusAndDraw(state: GameState): GameState {
+  const bonus = state.pendingBonus;
+  if (!bonus) return doHumanDraw(state);
+  const players = state.players.map((p) => ({ ...p }));
+  const me = players[state.humanIndex];
+  me.flowers = [...me.flowers, bonus];
+  let s: GameState = {
+    ...state,
+    players,
+    pendingBonus: null,
+    log: [...state.log, `${me.name} reveals a bonus tile.`],
+  };
+  s = applyBonusPayments(s, state.humanIndex, [bonus]);
+  return doHumanDraw(s);
 }
 
 /** Bot decision after acquiring a tile: self-draw win, maybe kong, else discard. */
@@ -1112,6 +1147,7 @@ export function startNextHand(state: GameState): GameState {
     canSelfDrawWin: false,
     kongOptions: [],
     drawnTile: null,
+    pendingBonus: null,
     handNumber: state.handNumber + 1,
     result: null,
     exhausted: false,

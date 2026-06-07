@@ -26,6 +26,7 @@ function run(seedLabel: string, rulesOverride = {}) {
       case "await-draw":
       case "await-discard":
       case "await-claims":
+      case "bonus-reveal":
         s = advance(s);
         break;
       case "player-choose": {

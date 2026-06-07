@@ -16,6 +16,7 @@ interface Props {
   melds: Meld[];
   flowers: TileId[];
   drawnTile: TileId | null;
+  pendingBonus: TileId | null;
   selected: TileId | null;
   interactive: boolean;
   onSelect: (tile: TileId) => void;
@@ -28,6 +29,7 @@ export default function PlayerHand({
   melds,
   flowers,
   drawnTile,
+  pendingBonus,
   selected,
   interactive,
   onSelect,
@@ -89,6 +91,14 @@ export default function PlayerHand({
               selected={selected === fresh}
               onClick={interactive ? () => onSelect(fresh!) : undefined}
             />
+          </div>
+        )}
+        {pendingBonus && (
+          <div className="ml-2 flex animate-slide-in-right flex-col items-center border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
+            <TileComponent tileId={pendingBonus} size="hand" recent />
+            <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
+              → 上桌 table
+            </span>
           </div>
         )}
       </div>
