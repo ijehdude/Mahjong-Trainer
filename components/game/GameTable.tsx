@@ -66,8 +66,8 @@ export default function GameTable({ state }: Props) {
               牌墙 wall
             </div>
           </div>
-          {/* Central discard pile — up to 20 tiles per row */}
-          <div className="flex max-h-full w-full flex-1 items-center justify-center overflow-y-auto rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-2">
+          {/* Central discard pile — tiles wrap to fill width; scrolls if tall. */}
+          <div className="flex max-h-full w-full flex-1 items-start justify-center overflow-y-auto rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] px-2 py-2">
             <DiscardCenter state={state} />
           </div>
         </div>
@@ -94,13 +94,14 @@ function DiscardCenter({ state }: { state: GameState }) {
     );
   }
   return (
-    // ~12 discard tiles (32px + gap) per row before wrapping.
-    <div className="flex max-w-[700px] flex-wrap justify-center gap-0.5">
+    // Full-width central block: tiny tiles wrap to fill the available width so
+    // the whole pile stays visible on any screen, portrait phones included.
+    <div className="flex w-full flex-wrap content-start justify-center gap-0.5">
       {pile.map((d, i) => (
         <TileComponent
           key={i}
           tileId={d.tile}
-          size="discard"
+          size="tiny"
           recent={i === lastIdx}
         />
       ))}

@@ -923,6 +923,10 @@ function prospectiveWinTai(
   const concealed = selfDraw
     ? winner.hand
     : [...winner.hand, state.lastDiscard?.tile ?? ""];
+  // Self-draw: the winning tile is the just-drawn last tile in hand.
+  const winningTile = selfDraw
+    ? winner.hand[winner.hand.length - 1] ?? null
+    : state.lastDiscard?.tile ?? null;
   const decomposition = decomposeWin(concealed, winner.melds);
   if (
     !decomposition &&
@@ -933,6 +937,7 @@ function prospectiveWinTai(
   return calculateTai({
     decomposition,
     concealedTiles: concealed,
+    winningTile,
     melds: winner.melds,
     seatWind: winner.seatWind,
     roundWind: state.roundWind,
@@ -1031,6 +1036,7 @@ function computeWin(
   const result0 = calculateTai({
     decomposition,
     concealedTiles: concealed,
+    winningTile,
     melds: winner.melds,
     seatWind: winner.seatWind,
     roundWind: state.roundWind,

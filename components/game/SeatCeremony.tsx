@@ -210,8 +210,8 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
     if (phase !== "revealing") return;
     const timeouts: ReturnType<typeof setTimeout>[] = [];
     for (let r = 0; r < n; r++)
-      timeouts.push(setTimeout(() => setFlipped(r + 1), 350 + r * 600));
-    timeouts.push(setTimeout(() => setPhase("done"), 350 + n * 600));
+      timeouts.push(setTimeout(() => setFlipped(r + 1), 220 + r * 320));
+    timeouts.push(setTimeout(() => setPhase("done"), 220 + n * 320));
     return () => timeouts.forEach(clearTimeout);
   }, [phase, n]);
 

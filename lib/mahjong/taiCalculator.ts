@@ -3,7 +3,12 @@ import type { Meld } from "@/types/game";
 import { LIMIT_TAI } from "@/types/game";
 import type { TileId, Wind } from "@/types/tiles";
 import { ANIMAL_NAME, DRAGONS, WINDS } from "@/types/tiles";
-import { Decomposition, isSevenPairs, isThirteenOrphans } from "./handValidator";
+import {
+  Decomposition,
+  isSevenPairs,
+  isThirteenOrphans,
+  isTwoSidedSequenceWait,
+} from "./handValidator";
 import { isAnimal, isFlowerOrSeason, isSuit, suitOf } from "./tiles";
 
 /* ===========================================================================
@@ -22,6 +27,8 @@ interface ScoreContext {
   decomposition: Decomposition | null;
   /** Full concealed tiles incl. the winning tile (excludes declared melds). */
   concealedTiles: TileId[];
+  /** The tile that completed the hand (drawn or claimed). Null if unknown. */
+  winningTile: TileId | null;
   melds: Meld[];
   seatWind: Wind;
   roundWind: Wind;
@@ -65,6 +72,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   const {
     decomposition,
     concealedTiles,
+    winningTile,
     melds,
     seatWind,
     roundWind,
@@ -231,15 +239,22 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
 
   // ---- Ping Hu (平胡) — all sequences, plain (non-value) pair, no flush.
   // Holding any flower/season/animal makes it Chou Ping Hu 臭平胡 instead.
+  // Scores 1 tai off a discard, 4 tai self-drawn (自摸平胡). It may only be
+  // claimed off a discard from a two-sided (两面) wait; a one-sided wait
+  // (edge / closed / pair) must be self-drawn to win.
   const pairTile = decomposition.pair;
   const pairIsValue =
     pairTile === seatWind ||
     pairTile === roundWind ||
     (DRAGONS as string[]).includes(pairTile);
-  if (sets.every((s) => s.type === "sequence") && !pairIsValue && !flush)
+  const twoSidedOk =
+    selfDraw ||
+    (winningTile !== null &&
+      isTwoSidedSequenceWait(concealedTiles, melds, winningTile));
+  if (sets.every((s) => s.type === "sequence") && !pairIsValue && !flush && twoSidedOk)
     breakdown.push({
       label: hasBonus ? "Chou Ping Hu 臭平胡" : "Ping Hu 平胡",
-      tai: 1,
+      tai: selfDraw ? 4 : 1,
     });
 
   addBonus();

@@ -233,3 +233,54 @@ export function getWaits(concealed: TileId[], melds: Meld[]): TileId[] {
 export function isTenpai(concealed: TileId[], melds: Meld[]): boolean {
   return getWaits(concealed, melds).length > 0;
 }
+
+/** Remove one copy of each tile in `remove` from `tiles`; null if any missing. */
+function removeOnce(tiles: TileId[], remove: TileId[]): TileId[] | null {
+  const out = [...tiles];
+  for (const r of remove) {
+    const i = out.indexOf(r);
+    if (i === -1) return null;
+    out.splice(i, 1);
+  }
+  return out;
+}
+
+/**
+ * Two-sided (两面 / ryanmen) wait test for the winning tile.
+ *
+ * `concealed` is the full winning set (includes `winningTile`). Returns true if
+ * some valid decomposition places `winningTile` at a NON-edge end of a sequence
+ * — i.e. an open wait. Edge waits (边张 penchan: 1-2 _3, 7-8 _9... wait on the
+ * single open end), closed waits (嵌张 kanchan, the middle tile) and pair waits
+ * (单钓 tanki) are all one-sided and return false.
+ *
+ * Used to gate Ping Hu (平胡), which may only be claimed on a discard from a
+ * two-sided wait; one-sided waits must be self-drawn.
+ */
+export function isTwoSidedSequenceWait(
+  concealed: TileId[],
+  melds: Meld[],
+  winningTile: TileId
+): boolean {
+  if (!isSuit(winningTile)) return false; // honors never form sequences
+  const suit = suitOf(winningTile)!;
+  const rank = rankOf(winningTile)!;
+  const setsNeeded = 4 - melds.length;
+  if (setsNeeded < 1) return false; // no room for a concealed sequence
+
+  // Sequences in which `winningTile` sits at an OPEN end:
+  //   low end  → held (r+1, r+2); open when r ≤ 6 (r=7 would be the 7-8-9 edge)
+  //   high end → held (r-2, r-1); open when r ≥ 4 (r=3 would be the 1-2-3 edge)
+  const seqs: TileId[][] = [];
+  if (rank <= 6)
+    seqs.push([`${rank}${suit}`, `${rank + 1}${suit}`, `${rank + 2}${suit}`]);
+  if (rank >= 4)
+    seqs.push([`${rank - 2}${suit}`, `${rank - 1}${suit}`, `${rank}${suit}`]);
+
+  for (const seq of seqs) {
+    const remaining = removeOnce(concealed, seq);
+    if (!remaining) continue;
+    if (decomposeConcealed(remaining, setsNeeded - 1)) return true;
+  }
+  return false;
+}

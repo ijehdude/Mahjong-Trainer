@@ -71,7 +71,7 @@ export default function ScoreHeader({
       </div>
 
       {/* Row 2 — round / seat / controls */}
-      <div className="flex items-center gap-2 px-3 py-2 text-xs">
+      <div className="flex items-center gap-2 px-3 py-1 text-xs">
         <span className="rounded-lg border border-[rgba(255,255,255,0.1)] px-2.5 py-1 font-semibold text-[var(--text-primary)]">
           圈风 {WIND_NAME[roundWind]} {handNumber}
         </span>
@@ -111,7 +111,7 @@ function Stat({
   valueClass?: string;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center py-1.5">
+    <div className="flex flex-1 flex-col items-center justify-center py-1">
       <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
         {label}
       </span>

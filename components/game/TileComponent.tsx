@@ -9,13 +9,15 @@ import TileFace from "./TileFace";
    (TileFace). No images or emoji; everything is drawn in CSS/SVG.
    =========================================================================== */
 
-export type TileSize = "hand" | "discard" | "meld" | "mini";
+export type TileSize = "hand" | "discard" | "meld" | "mini" | "tiny";
 
 const SIZE: Record<TileSize, string> = {
   hand: "w-12 h-16 rounded-lg p-1",
   discard: "w-8 h-11 rounded-md p-0.5",
   meld: "w-7 h-10 rounded-md p-0.5",
   mini: "w-6 h-8 rounded p-px",
+  // Smallest face — used to pack a full discard pile into one screen on mobile.
+  tiny: "w-[18px] h-[26px] rounded-sm p-px",
 };
 
 interface Props {
