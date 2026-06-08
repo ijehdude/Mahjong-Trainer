@@ -14,27 +14,23 @@ import TileComponent from "./TileComponent";
 interface Props {
   hand: TileId[];
   melds: Meld[];
-  flowers: TileId[];
   drawnTile: TileId | null;
   pendingBonus: TileId | null;
   selected: TileId | null;
   interactive: boolean;
   onSelect: (tile: TileId) => void;
   seatLabel: string;
-  bonusTai: number;
 }
 
 export default function PlayerHand({
   hand,
   melds,
-  flowers,
   drawnTile,
   pendingBonus,
   selected,
   interactive,
   onSelect,
   seatLabel,
-  bonusTai,
 }: Props) {
   // Sort the concealed hand, keeping the freshly drawn tile out to the right.
   let concealed = [...hand];
@@ -52,19 +48,6 @@ export default function PlayerHand({
         <span className="text-[var(--accent-gold)]">我的手牌 Your Hand</span>
         <span>·</span>
         <span>{seatLabel}</span>
-        {bonusTai > 0 && (
-          <span className="rounded bg-[rgba(201,168,76,0.2)] px-1.5 py-0.5 font-bold text-[var(--accent-gold)]">
-            +{bonusTai}台
-          </span>
-        )}
-        {flowers.length > 0 && (
-          <span className="flex items-center gap-1 rounded-md bg-[rgba(201,168,76,0.12)] px-1.5 py-0.5">
-            <span className="text-[var(--accent-gold)]">花/季 {flowers.length}</span>
-            {flowers.map((t) => (
-              <TileComponent key={t} tileId={t} size="discard" />
-            ))}
-          </span>
-        )}
       </div>
 
       {melds.length > 0 && (
@@ -73,22 +56,23 @@ export default function PlayerHand({
         </div>
       )}
 
-      {/* One horizontally-scrolling row on mobile; wraps on wider screens. */}
-      <div className="flex flex-nowrap items-end gap-1 overflow-x-auto pb-1 md:flex-wrap">
+      {/* Full hand on one screen: tiles shrink on mobile so all ~14 fit
+          without horizontal scrolling; wraps/full-size on wider screens. */}
+      <div className="flex flex-nowrap items-end gap-0.5 overflow-x-auto pb-1 md:flex-wrap md:gap-1">
         {sorted.map((t, i) => (
           <TileComponent
             key={`${t}-${i}`}
             tileId={t}
-            size="hand"
+            size="handfit"
             selected={selected === t}
             onClick={interactive ? () => onSelect(t) : undefined}
           />
         ))}
         {fresh && (
-          <div className="ml-2 flex animate-slide-in-right border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
+          <div className="flex animate-slide-in-right md:ml-2 md:border-l md:border-dashed md:border-[rgba(201,168,76,0.4)] md:pl-2">
             <TileComponent
               tileId={fresh}
-              size="hand"
+              size="handfit"
               selected={selected === fresh}
               drawn={selected !== fresh}
               onClick={interactive ? () => onSelect(fresh!) : undefined}

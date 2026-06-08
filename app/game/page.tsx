@@ -313,14 +313,12 @@ export default function GamePage() {
     <PlayerHand
       hand={human.hand}
       melds={human.melds}
-      flowers={human.flowers}
       drawnTile={state.drawnTile}
       pendingBonus={state.pendingBonus}
       selected={selected}
       interactive={isPlayerChoose}
       onSelect={handleSelect}
       seatLabel={human.seatWind.toUpperCase()}
-      bonusTai={bonusTai}
     />
   );
 
