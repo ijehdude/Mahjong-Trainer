@@ -73,7 +73,8 @@ export default function PlayerHand({
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-1">
+      {/* One horizontally-scrolling row on mobile; wraps on wider screens. */}
+      <div className="flex flex-nowrap items-end gap-1 overflow-x-auto pb-1 md:flex-wrap">
         {sorted.map((t, i) => (
           <TileComponent
             key={`${t}-${i}`}
@@ -84,11 +85,12 @@ export default function PlayerHand({
           />
         ))}
         {fresh && (
-          <div className="ml-2 animate-slide-in-right border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
+          <div className="ml-2 flex animate-slide-in-right border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
             <TileComponent
               tileId={fresh}
               size="hand"
               selected={selected === fresh}
+              drawn={selected !== fresh}
               onClick={interactive ? () => onSelect(fresh!) : undefined}
             />
           </div>

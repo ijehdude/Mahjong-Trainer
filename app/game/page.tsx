@@ -27,6 +27,8 @@ import { taiHintFor } from "@/lib/mahjong/taiCalculator";
 import { tileName } from "@/lib/mahjong/tiles";
 import ScoreHeader from "@/components/game/ScoreHeader";
 import GameTable from "@/components/game/GameTable";
+import MobileFelt from "@/components/game/MobileFelt";
+import BonusBar from "@/components/game/BonusBar";
 import PlayerHand from "@/components/game/PlayerHand";
 import StrategyPanel from "@/components/game/StrategyPanel";
 import ActionButtons from "@/components/game/ActionButtons";
@@ -234,6 +236,94 @@ export default function GamePage() {
         ? `${state.players[state.turnIndex]?.name} 思考中… thinking`
         : "轮到你了 Your turn";
 
+  const bonusTai = taiHintFor(
+    human.flowers,
+    human.melds,
+    human.seatWind,
+    state.roundWind,
+    rules
+  );
+
+  // ---- Shared interactive blocks (composed differently per breakpoint) ---
+  const strategyBlock =
+    isPlayerChoose && selected ? (
+      <StrategyPanel
+        proposedDiscard={selected}
+        loading={feedback.loading}
+        verdict={feedback.verdict}
+        text={feedback.text}
+      />
+    ) : null;
+
+  const claimPrompt =
+    isPlayerClaim && state.claim ? (
+      <div className="rounded-2xl border border-[var(--accent-gold)] bg-[var(--bg-surface)]/95 px-4 py-3">
+        <span className="text-sm font-semibold text-[var(--accent-gold)]">
+          {state.claim.robKong
+            ? `${state.players[state.claim.discarderIndex].name} 加杠 ${tileName(
+                state.claim.discardTile
+              )} — 抢杠胡？(Rob the kong?)`
+            : `${state.players[state.claim.discarderIndex].name} 打出 ${tileName(
+                state.claim.discardTile
+              )} — 要吗？(claim?)`}
+        </span>
+      </div>
+    ) : null;
+
+  const actionRow = isPlayerChoose ? (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] tracking-wider text-[var(--text-muted)]">
+        {selected ? `打出 ${tileName(selected)}?` : "点击牌张预选 Tap a tile"}
+      </span>
+      <ActionButtons
+        mode="discard"
+        canDiscard={!!selected}
+        canWin={state.canSelfDrawWin}
+        selfKongOptions={state.kongOptions}
+        onDiscard={handleDiscard}
+        onWin={handleWin}
+        onSelfKong={handleSelfKong}
+      />
+    </div>
+  ) : isPlayerClaim && state.claim ? (
+    <ActionButtons
+      mode="claim"
+      canWin={state.claim.canWin}
+      canPong={state.claim.canPong}
+      canKong={state.claim.canKong}
+      chiOptions={state.claim.chiOptions}
+      discardTile={state.claim.discardTile}
+      onWin={handleWin}
+      onPong={() => handleClaim("pong")}
+      onKong={() => handleClaim("kong")}
+      onChi={(opt) => handleClaim("chi", opt)}
+      onPass={handlePass}
+    />
+  ) : null;
+
+  const waitingBlock =
+    !isPlayerChoose && !isPlayerClaim && state.phase !== "hand-over" ? (
+      <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-gold)]" />
+        {waitingLabel}
+      </div>
+    ) : null;
+
+  const handBlock = (
+    <PlayerHand
+      hand={human.hand}
+      melds={human.melds}
+      flowers={human.flowers}
+      drawnTile={state.drawnTile}
+      pendingBonus={state.pendingBonus}
+      selected={selected}
+      interactive={isPlayerChoose}
+      onSelect={handleSelect}
+      seatLabel={human.seatWind.toUpperCase()}
+      bonusTai={bonusTai}
+    />
+  );
+
   return (
     <main className="flex h-dvh flex-col bg-[var(--bg-felt)]">
       <ScoreHeader
@@ -251,103 +341,45 @@ export default function GamePage() {
         onRestart={handleRestart}
       />
 
-      {/* Table — fills the space between header and hand, no scrolling */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">
-        <GameTable state={state} />
+      {/* ===== Desktop / tablet (≥768px): overhead table + bottom dock ===== */}
+      <div className="hidden min-h-0 flex-1 flex-col md:flex">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">
+          <GameTable state={state} />
+        </div>
+        <div className="border-t border-[rgba(255,255,255,0.06)] bg-[rgba(15,30,23,0.96)] px-3 pb-4 pt-3 backdrop-blur-md">
+          {strategyBlock && <div className="mb-3">{strategyBlock}</div>}
+          {claimPrompt && <div className="mb-3">{claimPrompt}</div>}
+          {actionRow && <div className="mb-3">{actionRow}</div>}
+          {waitingBlock && <div className="mb-3">{waitingBlock}</div>}
+          {handBlock}
+        </div>
       </div>
 
-      {/* Bottom: feedback + actions + hand */}
-      <div className="sticky bottom-0 z-20 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(15,30,23,0.96)] px-3 pb-4 pt-3 backdrop-blur-md">
-        {/* Strategy feedback panel (pre-select) */}
-        {isPlayerChoose && selected && (
-          <div className="mb-3">
-            <StrategyPanel
-              proposedDiscard={selected}
-              loading={feedback.loading}
-              verdict={feedback.verdict}
-              text={feedback.text}
-            />
-          </div>
-        )}
+      {/* ===== Mobile (<768px): structured felt zone, no overhead SVG ===== */}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        {/* Felt zone */}
+        <div className="flex min-h-0 flex-1 px-2 pt-2">
+          <MobileFelt state={state} />
+        </div>
 
-        {/* Claim prompt */}
-        {isPlayerClaim && state.claim && (
-          <div className="mb-3 rounded-2xl border border-[var(--accent-gold)] bg-[var(--bg-surface)]/95 px-4 py-3">
-            <span className="text-sm font-semibold text-[var(--accent-gold)]">
-              {state.claim.robKong
-                ? `${state.players[state.claim.discarderIndex].name} 加杠 ${tileName(
-                    state.claim.discardTile
-                  )} — 抢杠胡？(Rob the kong?)`
-                : `${state.players[state.claim.discarderIndex].name} 打出 ${tileName(
-                    state.claim.discardTile
-                  )} — 要吗？(claim?)`}
-            </span>
-          </div>
-        )}
+        {/* Bonus bar */}
+        <BonusBar flowers={human.flowers} tai={bonusTai} />
 
-        {/* Action buttons */}
-        {isPlayerChoose && (
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="text-[11px] tracking-wider text-[var(--text-muted)]">
-              {selected
-                ? `打出 ${tileName(selected)}?`
-                : "点击牌张预选 Tap a tile"}
-            </span>
-            <ActionButtons
-              mode="discard"
-              canDiscard={!!selected}
-              canWin={state.canSelfDrawWin}
-              selfKongOptions={state.kongOptions}
-              onDiscard={handleDiscard}
-              onWin={handleWin}
-              onSelfKong={handleSelfKong}
-            />
-          </div>
-        )}
+        {/* Divider */}
+        <div className="mx-3 border-t border-[rgba(255,255,255,0.08)]" />
 
-        {isPlayerClaim && state.claim && (
-          <div className="mb-3">
-            <ActionButtons
-              mode="claim"
-              canWin={state.claim.canWin}
-              canPong={state.claim.canPong}
-              canKong={state.claim.canKong}
-              chiOptions={state.claim.chiOptions}
-              discardTile={state.claim.discardTile}
-              onWin={handleWin}
-              onPong={() => handleClaim("pong")}
-              onKong={() => handleClaim("kong")}
-              onChi={(opt) => handleClaim("chi", opt)}
-              onPass={handlePass}
-            />
-          </div>
-        )}
-
-        {!isPlayerChoose && !isPlayerClaim && state.phase !== "hand-over" && (
-          <div className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-gold)]" />
-            {waitingLabel}
-          </div>
-        )}
-
-        <PlayerHand
-          hand={human.hand}
-          melds={human.melds}
-          flowers={human.flowers}
-          drawnTile={state.drawnTile}
-          pendingBonus={state.pendingBonus}
-          selected={selected}
-          interactive={isPlayerChoose}
-          onSelect={handleSelect}
-          seatLabel={human.seatWind.toUpperCase()}
-          bonusTai={taiHintFor(
-            human.flowers,
-            human.melds,
-            human.seatWind,
-            state.roundWind,
-            rules
+        {/* Hand → actions → strategy */}
+        <div className="shrink-0 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(15,30,23,0.96)] px-3 pb-3 pt-2 backdrop-blur-md">
+          {handBlock}
+          {claimPrompt && <div className="mt-2">{claimPrompt}</div>}
+          {actionRow && <div className="mt-2">{actionRow}</div>}
+          {waitingBlock && <div className="mt-2">{waitingBlock}</div>}
+          {strategyBlock && (
+            <div className="mt-2 max-h-[38vh] overflow-y-auto">
+              {strategyBlock}
+            </div>
           )}
-        />
+        </div>
       </div>
 
       {/* Hand-over overlay */}

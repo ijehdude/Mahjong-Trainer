@@ -135,7 +135,7 @@ function ActionBtn({
       "bg-[var(--accent-gold)] text-[var(--bg-dark)] shadow-[0_0_16px_rgba(201,168,76,0.4)]",
     default:
       "border border-[rgba(201,168,76,0.45)] text-[var(--accent-gold)] hover:bg-[rgba(201,168,76,0.12)]",
-    win: "bg-[var(--feedback-correct)] text-white shadow-[0_0_16px_rgba(39,174,96,0.45)]",
+    win: "bg-[var(--accent-red)] text-white shadow-[0_0_16px_rgba(192,57,43,0.5)]",
     muted:
       "border border-[rgba(255,255,255,0.14)] text-[var(--text-muted)] hover:text-[var(--text-primary)]",
   };

@@ -20,6 +20,9 @@ const INK = "#23232f";
 const ORANGE = "#d2792b";
 const FACE = "#f7f3ea";
 const SERIF = "var(--font-noto-serif-sc), serif";
+// Tile characters (numerals, 萬, honors) — Noto Sans SC bold for a crisp,
+// modern face that stays legible at small sizes.
+const TILE = "var(--font-tile), var(--font-noto-sans-sc), sans-serif";
 
 type Pt = [number, number];
 
@@ -206,7 +209,7 @@ function CharacterFace({ tile }: { tile: Tile }) {
         x={18}
         y={20}
         textAnchor="middle"
-        fontFamily={SERIF}
+        fontFamily={TILE}
         fontSize={17}
         fontWeight={700}
         fill={BLUE}
@@ -217,7 +220,7 @@ function CharacterFace({ tile }: { tile: Tile }) {
         x={18}
         y={43}
         textAnchor="middle"
-        fontFamily={SERIF}
+        fontFamily={TILE}
         fontSize={17}
         fontWeight={700}
         fill={RED}
@@ -234,7 +237,7 @@ function HonorChar({ char, color }: { char: string; color: string }) {
       x={18}
       y={34}
       textAnchor="middle"
-      fontFamily={SERIF}
+      fontFamily={TILE}
       fontSize={26}
       fontWeight={700}
       fill={color}

@@ -25,6 +25,8 @@ interface Props {
   size?: TileSize;
   selected?: boolean;
   recent?: boolean;
+  /** The freshly drawn tile — highlighted with a green border. */
+  drawn?: boolean;
   dimmed?: boolean;
   faceDown?: boolean;
   onClick?: () => void;
@@ -36,6 +38,7 @@ export default function TileComponent({
   size = "hand",
   selected = false,
   recent = false,
+  drawn = false,
   dimmed = false,
   faceDown = false,
   onClick,
@@ -60,7 +63,9 @@ export default function TileComponent({
   const classes = `${SIZE[size]} relative shrink-0 select-none border bg-gradient-to-b from-white via-[#f6f1e6] to-[#e6ddca] ${depth} transition-all duration-150 ${
     selected
       ? "-translate-y-1.5 border-[var(--accent-gold)] ring-2 ring-[var(--accent-gold)] shadow-[0_0_18px_rgba(201,168,76,0.6)]"
-      : "border-[#cbc1a8]"
+      : drawn
+        ? "border-[var(--feedback-correct)] ring-2 ring-[var(--feedback-correct)] shadow-[0_0_14px_rgba(39,174,96,0.5)]"
+        : "border-[#cbc1a8]"
   } ${recent ? "ring-2 ring-[var(--accent-gold)]/80" : ""} ${
     dimmed ? "opacity-45" : ""
   } ${
