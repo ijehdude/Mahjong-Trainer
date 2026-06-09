@@ -36,6 +36,8 @@ interface ScoreContext {
   robKong: boolean;
   /** Won on the very last available tile (last draw or last discard) — 海底. */
   lastTile: boolean;
+  /** Self-draw win on a replacement tile: "kong" 杠上开花 / "flower" 花上开花. */
+  replacement: "kong" | "flower" | null;
   /** Heavenly/Earthly hand (first-turn limit wins), if applicable. */
   firstTurnWin?: "tian" | "di";
   /** The winner's revealed bonus tiles (flowers, seasons and animals). */
@@ -81,6 +83,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     selfDraw,
     robKong,
     lastTile,
+    replacement,
     firstTurnWin,
     bonusTiles,
     rules,
@@ -103,6 +106,13 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     // (the last wall draw self-drawn, or the last discard ronned). +1 tai.
     if (lastTile)
       breakdown.push({ label: "Last tile 海底捞月", tai: 1 });
+
+    // Replacement-tile self-draw: 杠上开花 (after a kong) / 花上开花 (after a
+    // flower). +1 tai. (Only ever set for self-draw wins.)
+    if (replacement === "kong")
+      breakdown.push({ label: "Kong replacement 杠上开花", tai: 1 });
+    else if (replacement === "flower")
+      breakdown.push({ label: "Flower replacement 花上开花", tai: 1 });
 
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });

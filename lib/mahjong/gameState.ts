@@ -76,6 +76,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     canSelfDrawWin: false,
     kongOptions: [],
     drawnTile: null,
+    replacementDraw: null,
     pendingBonus: null,
     handNumber: 1,
     result: null,
@@ -213,6 +214,8 @@ function doDraw(state: GameState): GameState {
     ...state,
     players,
     wall,
+    // A live tile drawn after revealing a flower is a 花上开花 replacement.
+    replacementDraw: flowersAdded.length > 0 ? "flower" : null,
     log:
       flowersAdded.length > 0
         ? [...state.log, `${me.name} reveals ${flowersAdded.length} bonus tile(s).`]
@@ -224,7 +227,10 @@ function doDraw(state: GameState): GameState {
 }
 
 /** Human draws a single tile. A bonus pauses in "bonus-reveal" before settling. */
-function doHumanDraw(state: GameState): GameState {
+function doHumanDraw(
+  state: GameState,
+  replacement: GameState["replacementDraw"] = null
+): GameState {
   if (state.wall.length === 0) return endExhausted(state);
   const wall = [...state.wall];
   const tile = wall.shift()!;
@@ -243,7 +249,7 @@ function doHumanDraw(state: GameState): GameState {
   const players = state.players.map((p) => ({ ...p }));
   const me = players[state.humanIndex];
   me.hand = [...me.hand, tile];
-  const next: GameState = { ...state, players, wall };
+  const next: GameState = { ...state, players, wall, replacementDraw: replacement };
   return {
     ...next,
     phase: "player-choose",
@@ -268,7 +274,8 @@ function settleBonusAndDraw(state: GameState): GameState {
     log: [...state.log, `${me.name} reveals a bonus tile.`],
   };
   s = applyBonusPayments(s, state.humanIndex, [bonus]);
-  return doHumanDraw(s);
+  // The replacement tile drawn after a flower scores 花上开花 on a self-draw.
+  return doHumanDraw(s, "flower");
 }
 
 /** Bot decision after acquiring a tile: self-draw win, maybe kong, else discard. */
@@ -560,6 +567,8 @@ function afterKongDraw(state: GameState, index: number): GameState {
     ...state,
     players,
     wall,
+    // A self-draw win on the kong replacement scores 杠上开花.
+    replacementDraw: "kong",
     lastDiscard: null,
     claim: null,
     pendingKong: null,
@@ -945,6 +954,7 @@ function prospectiveWinTai(
     selfDraw,
     robKong: false,
     lastTile: state.wall.every(isBonus),
+    replacement: selfDraw ? state.replacementDraw : null,
     bonusTiles: winner.flowers,
     rules: state.rules,
   }).tai;
@@ -1046,6 +1056,7 @@ function computeWin(
     selfDraw,
     robKong,
     lastTile: state.wall.every(isBonus),
+    replacement: selfDraw ? state.replacementDraw : null,
     firstTurnWin,
     bonusTiles: winner.flowers,
     rules: state.rules,
@@ -1176,6 +1187,7 @@ export function startNextHand(state: GameState): GameState {
     canSelfDrawWin: false,
     kongOptions: [],
     drawnTile: null,
+    replacementDraw: null,
     pendingBonus: null,
     handNumber: state.handNumber + 1,
     result: null,

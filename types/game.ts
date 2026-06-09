@@ -153,6 +153,11 @@ export interface GameState {
   kongOptions: KongOption[];
   /** The tile the human just drew (rendered apart on the right of the hand). */
   drawnTile: TileId | null;
+  /**
+   * Whether the current draw is a replacement tile, for 杠上开花 (after a kong)
+   * or 花上开花 (after revealing a flower). A self-draw win on it scores +1 tai.
+   */
+  replacementDraw: "kong" | "flower" | null;
   /** A bonus tile the human just drew, shown in hand before moving to table. */
   pendingBonus: TileId | null;
   handNumber: number;
