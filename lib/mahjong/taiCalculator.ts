@@ -237,6 +237,17 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     }
   }
 
+  // ---- Half flush (混一色) — one suit plus honor tiles only ----------------
+  if (!flush) {
+    const oneSuit = new Set(suitTiles.map((t) => suitOf(t))).size === 1;
+    const nonSuit = allTiles.filter((t) => !isSuit(t));
+    const honorsOnly = nonSuit.every(
+      (t) => (WINDS as string[]).includes(t) || (DRAGONS as string[]).includes(t)
+    );
+    if (oneSuit && nonSuit.length > 0 && honorsOnly)
+      breakdown.push({ label: "Half flush 混一色", tai: 2 });
+  }
+
   // ---- Ping Hu (平胡) — all sequences, plain (non-value) pair, no flush.
   // Holding any flower/season/animal makes it Chou Ping Hu 臭平胡 instead.
   // Scores 1 tai off a discard, 4 tai self-drawn (自摸平胡). It may only be
