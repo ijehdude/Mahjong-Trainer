@@ -136,6 +136,8 @@ export interface GameState {
   /** Transient per-player payment deltas to float on screen (bonus/kong). */
   payAnim: { deltas: number[]; id: number } | null;
   roundWind: Wind;
+  /** Index of the current dealer (East). Rotates between hands. */
+  dealerIndex: number;
   turnIndex: number; // whose turn
   phase: GamePhase;
   /** All discards in play order, shown as one central pile. */

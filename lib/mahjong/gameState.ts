@@ -66,6 +66,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     deadWallFlowers: [],
     payAnim: null,
     roundWind: "east",
+    dealerIndex: 0, // seat 0 starts as East / dealer; rotates each hand
     turnIndex: 0, // dealer (East) starts
     phase: "await-draw",
     discardPile: [],
@@ -1019,14 +1020,15 @@ function computeWin(
   // or melds yet). Earthly hand 地胡: a non-dealer rons the dealer's first
   // discard. Both are limit (满台) hands.
   const noMelds = state.players.every((p) => p.melds.length === 0);
+  const dealer = state.dealerIndex;
   let firstTurnWin: "tian" | "di" | undefined;
   if (noMelds && winningTile) {
-    if (selfDraw && winnerIndex === 0 && state.discardPile.length === 0)
+    if (selfDraw && winnerIndex === dealer && state.discardPile.length === 0)
       firstTurnWin = "tian";
     else if (
       !robKong &&
-      discarderIndex === 0 &&
-      winnerIndex !== 0 &&
+      discarderIndex === dealer &&
+      winnerIndex !== dealer &&
       state.discardPile.length === 1
     )
       firstTurnWin = "di";
@@ -1051,7 +1053,7 @@ function computeWin(
   const payments = computePayments({
     playerCount: players.length,
     winnerIndex,
-    dealerIndex: 0,
+    dealerIndex: state.dealerIndex,
     discarderIndex,
     tai,
     rate: state.rules.payoutRate,
@@ -1131,10 +1133,27 @@ export function recordDiscardAccuracy(
 
 export function startNextHand(state: GameState): GameState {
   const n = state.rules.players;
+
+  // Dealer rotation: the dealer keeps the deal (连庄) when they win or the hand
+  // washes out; otherwise it passes to the next seat, who becomes East and all
+  // seat winds shift accordingly. When the deal returns to the starting seat
+  // (index 0), the prevailing wind advances (East → South → West → North),
+  // giving a full game of at least 4 × n hands.
+  const prevDealer = state.dealerIndex;
+  const dealerKeeps =
+    state.result === null || state.result.winnerIndex === prevDealer;
+  const dealerIndex = dealerKeeps ? prevDealer : (prevDealer + 1) % n;
+  const roundWind =
+    !dealerKeeps && dealerIndex === 0
+      ? SEAT_WINDS[(SEAT_WINDS.indexOf(state.roundWind) + 1) % SEAT_WINDS.length]
+      : state.roundWind;
+
   const deck = shuffle(buildDeck(state.rules.flowerTiles, state.rules.animalTiles, state.rules.feiTiles));
   const dealt = deal(deck, n);
   const players = state.players.map((p, i) => ({
     ...p,
+    seatWind: SEAT_WINDS[(i - dealerIndex + n) % n],
+    isDealer: i === dealerIndex,
     hand: dealt.hands[i],
     melds: [],
     discards: [],
@@ -1144,7 +1163,9 @@ export function startNextHand(state: GameState): GameState {
     ...state,
     players,
     wall: dealt.wall,
-    turnIndex: 0,
+    dealerIndex,
+    roundWind,
+    turnIndex: dealerIndex, // the dealer draws first
     phase: "await-draw",
     discardPile: [],
     lastDiscard: null,
@@ -1157,7 +1178,10 @@ export function startNextHand(state: GameState): GameState {
     handNumber: state.handNumber + 1,
     result: null,
     exhausted: false,
-    log: [...state.log, `— Hand ${state.handNumber + 1} —`],
+    log: [
+      ...state.log,
+      `— Hand ${state.handNumber + 1} — ${roundWind} round, dealer ${players[dealerIndex].name} —`,
+    ],
   };
   for (let i = 0; i < players.length; i++)
     next = applyBonusPayments(next, i, next.players[i].flowers);

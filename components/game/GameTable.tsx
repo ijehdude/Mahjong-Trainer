@@ -17,7 +17,7 @@ interface Props {
 }
 
 export default function GameTable({ state }: Props) {
-  const dealer = state.players[0];
+  const dealer = state.players[state.dealerIndex];
 
   const seatView = (seat: RelativeSeat) => {
     const idx = indexForSeat(state, seat);
