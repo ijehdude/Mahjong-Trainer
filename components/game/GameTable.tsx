@@ -94,14 +94,14 @@ function DiscardCenter({ state }: { state: GameState }) {
     );
   }
   return (
-    // Full-width central block: tiny tiles wrap to fill the available width so
-    // the whole pile stays visible on any screen, portrait phones included.
-    <div className="flex w-full flex-wrap content-start justify-center gap-0.5">
+    // Desktop central pile: readable tiles, capped so ~16 fit per row before
+    // wrapping into the (otherwise unused) vertical space below.
+    <div className="flex max-w-[580px] flex-wrap content-start justify-center gap-1">
       {pile.map((d, i) => (
         <TileComponent
           key={i}
           tileId={d.tile}
-          size="tiny"
+          size="discard"
           recent={i === lastIdx}
         />
       ))}
