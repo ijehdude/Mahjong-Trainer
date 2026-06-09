@@ -94,9 +94,9 @@ function DiscardCenter({ state }: { state: GameState }) {
     );
   }
   return (
-    // Desktop central pile: readable tiles, capped so ~16 fit per row before
+    // Desktop central pile: readable tiles, capped so 24 fit per row before
     // wrapping into the (otherwise unused) vertical space below.
-    <div className="flex max-w-[580px] flex-wrap content-start justify-center gap-1">
+    <div className="flex max-w-[880px] flex-wrap content-start justify-center gap-1">
       {pile.map((d, i) => (
         <TileComponent
           key={i}
