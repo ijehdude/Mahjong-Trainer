@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { GameState, RelativeSeat } from "@/types/game";
-import type { TileId } from "@/types/tiles";
 import { WIND_NAME } from "@/types/tiles";
 import { indexForSeat } from "@/lib/mahjong/gameState";
 import { taiHintFor } from "@/lib/mahjong/taiCalculator";
@@ -9,13 +9,13 @@ import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
 /* ===========================================================================
-   Compact mobile felt zone (<768px). A 3-column grid laid out like a real
-   table from the player's seat:
+   Compact mobile felt zone (<768px). A 3-column grid:
      • side columns  — the two side players' info (name · count · tai · melds)
-     • centre column — across discards (top) / side discards flanking the wall
-                       counter (middle) / your discards (bottom)
-   Discard pools use the smallest tile face so the whole table fits one screen.
-   The overhead SVG table (GameTable) is shown only on ≥768px instead.
+     • centre column — the across player's info on top, then ONE combined
+                       discard pile that all players add to (newest auto-scrolled
+                       into view). No per-player split, no central wall counter.
+   Discard tiles use the smallest face so a full pile fits one screen. The
+   overhead SVG table (GameTable) is shown only on ≥768px instead.
    =========================================================================== */
 
 interface Props {
@@ -42,10 +42,19 @@ export default function MobileFelt({ state }: Props) {
     };
   };
 
-  const self = seatView("self");
   const across = seatView("across");
   const left = seatView("left");
   const right = seatView("right");
+
+  // Keep the most recent discard in view as the pile grows.
+  const pileRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = pileRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [state.discardPile.length]);
+
+  const pile = state.discardPile;
+  const lastIdx = pile.length - 1;
 
   return (
     <div className="felt-glow flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.05)] p-1.5">
@@ -53,41 +62,33 @@ export default function MobileFelt({ state }: Props) {
         {/* Left side player */}
         <SideInfo view={left} side="left" />
 
-        {/* Centre: discards + wall */}
-        <div className="flex min-h-0 flex-col items-center justify-between gap-1">
-          {/* Across player (top) */}
-          <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-0.5">
+        {/* Centre: across info + one combined discard pile */}
+        <div className="flex min-h-0 flex-col gap-1">
+          <div className="flex shrink-0 flex-col items-center gap-0.5">
             <SeatTag view={across} />
             {across && across.player.melds.length > 0 && (
               <MeldedSets melds={across.player.melds} size="mini" />
             )}
-            <Pool tiles={across?.player.discards ?? []} />
           </div>
 
-          {/* Middle: left discards · wall · right discards */}
-          <div className="flex w-full shrink-0 items-center justify-center gap-1">
-            <Pool
-              tiles={left?.player.discards ?? []}
-              className="max-h-16 flex-1 justify-end"
-            />
-            <div className="flex shrink-0 flex-col items-center leading-none">
-              <span className="text-sm font-bold text-[var(--accent-gold)]">
-                {state.wall.length}
+          <div
+            ref={pileRef}
+            className="flex min-h-0 flex-1 flex-wrap content-start justify-center gap-px overflow-y-auto rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.18)] p-1"
+          >
+            {pile.length === 0 ? (
+              <span className="m-auto text-[10px] italic text-[var(--text-muted)]/50">
+                弃牌区 discards
               </span>
-              <span className="text-[7px] uppercase tracking-wider text-[var(--text-muted)]">
-                墙 wall
-              </span>
-            </div>
-            <Pool
-              tiles={right?.player.discards ?? []}
-              className="max-h-16 flex-1 justify-start"
-            />
-          </div>
-
-          {/* Self (bottom) */}
-          <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-end gap-0.5">
-            <Pool tiles={self?.player.discards ?? []} />
-            <SeatTag view={self} self />
+            ) : (
+              pile.map((d, i) => (
+                <TileComponent
+                  key={i}
+                  tileId={d.tile}
+                  size="tiny"
+                  recent={i === lastIdx}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -98,32 +99,8 @@ export default function MobileFelt({ state }: Props) {
   );
 }
 
-/** A discard pool rendered with the smallest tile face. Scrolls if it overflows. */
-function Pool({
-  tiles,
-  className = "",
-}: {
-  tiles: TileId[];
-  className?: string;
-}) {
-  return (
-    <div
-      className={`flex flex-wrap content-start gap-px overflow-y-auto ${className}`}
-    >
-      {tiles.map((t, i) => (
-        <TileComponent
-          key={i}
-          tileId={t}
-          size="tiny"
-          recent={i === tiles.length - 1}
-        />
-      ))}
-    </div>
-  );
-}
-
-/** A small name/tai tag for the across & self seats in the centre column. */
-function SeatTag({ view, self }: { view: SeatInfo | null; self?: boolean }) {
+/** A small name/tai tag for the across seat above the discard pile. */
+function SeatTag({ view }: { view: SeatInfo | null }) {
   if (!view) return <div className="h-3" />;
   const { player, isDealer, isCurrent, tai } = view;
   return (
@@ -147,11 +124,9 @@ function SeatTag({ view, self }: { view: SeatInfo | null; self?: boolean }) {
           +{tai}台
         </span>
       )}
-      {!self && (
-        <span className="flex items-center gap-0.5 text-[8px] text-[var(--text-muted)]">
-          <TileComponent tileId="east" size="tiny" faceDown />×{player.hand.length}
-        </span>
-      )}
+      <span className="flex items-center gap-0.5 text-[8px] text-[var(--text-muted)]">
+        <TileComponent tileId="east" size="tiny" faceDown />×{player.hand.length}
+      </span>
     </div>
   );
 }
