@@ -249,10 +249,10 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   }
 
   // ---- Ping Hu (平胡) — all sequences, plain (non-value) pair, no flush.
-  // Holding any flower/season/animal makes it Chou Ping Hu 臭平胡 instead.
-  // Scores 1 tai off a discard, 4 tai self-drawn (自摸平胡). It may only be
-  // claimed off a discard from a two-sided (两面) wait; a one-sided wait
-  // (edge / closed / pair) must be self-drawn to win.
+  // A clean Ping Hu scores 4 tai (self-draw or discard alike). Holding any
+  // flower/season/animal degrades it to Chou Ping Hu 臭平胡 (1 tai). Ping Hu
+  // may only be claimed off a discard from a two-sided (两面) wait; a one-sided
+  // wait (edge / closed / pair) must be self-drawn to win.
   const pairTile = decomposition.pair;
   const pairIsValue =
     pairTile === seatWind ||
@@ -265,7 +265,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   if (sets.every((s) => s.type === "sequence") && !pairIsValue && !flush && twoSidedOk)
     breakdown.push({
       label: hasBonus ? "Chou Ping Hu 臭平胡" : "Ping Hu 平胡",
-      tai: selfDraw ? 4 : 1,
+      tai: hasBonus ? 1 : 4,
     });
 
   addBonus();
