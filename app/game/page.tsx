@@ -312,7 +312,6 @@ export default function GamePage() {
   const handBlock = (
     <PlayerHand
       hand={human.hand}
-      melds={human.melds}
       drawnTile={state.drawnTile}
       pendingBonus={state.pendingBonus}
       selected={selected}

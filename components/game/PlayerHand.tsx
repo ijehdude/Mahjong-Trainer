@@ -1,19 +1,17 @@
 "use client";
 
 import { sortTiles } from "@/lib/mahjong/tiles";
-import type { Meld } from "@/types/game";
 import type { TileId } from "@/types/tiles";
-import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
 /* ===========================================================================
    The human player's hand — concealed tiles + the freshly drawn tile set apart.
-   Tapping a tile pre-selects it as the discard candidate.
+   Tapping a tile pre-selects it as the discard candidate. Declared melds are
+   shown on the table (felt), not here, to avoid duplication.
    =========================================================================== */
 
 interface Props {
   hand: TileId[];
-  melds: Meld[];
   drawnTile: TileId | null;
   pendingBonus: TileId | null;
   selected: TileId | null;
@@ -24,7 +22,6 @@ interface Props {
 
 export default function PlayerHand({
   hand,
-  melds,
   drawnTile,
   pendingBonus,
   selected,
@@ -49,12 +46,6 @@ export default function PlayerHand({
         <span>·</span>
         <span>{seatLabel}</span>
       </div>
-
-      {melds.length > 0 && (
-        <div className="mb-2">
-          <MeldedSets melds={melds} size="discard" />
-        </div>
-      )}
 
       {/* Full hand on one screen: tiles shrink on mobile so all ~14 fit
           without horizontal scrolling; wraps/full-size on wider screens. */}

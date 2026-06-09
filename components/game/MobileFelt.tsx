@@ -45,6 +45,7 @@ export default function MobileFelt({ state }: Props) {
   const across = seatView("across");
   const left = seatView("left");
   const right = seatView("right");
+  const self = seatView("self");
 
   // Keep the most recent discard in view as the pile grows.
   const pileRef = useRef<HTMLDivElement>(null);
@@ -90,6 +91,16 @@ export default function MobileFelt({ state }: Props) {
               ))
             )}
           </div>
+
+          {/* Your declared melds — kept on the table, not in the hand. */}
+          {self && self.player.melds.length > 0 && (
+            <div className="flex shrink-0 flex-col items-center gap-0.5">
+              <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
+                你 YOU
+              </span>
+              <MeldedSets melds={self.player.melds} size="mini" />
+            </div>
+          )}
         </div>
 
         {/* Right side player */}
