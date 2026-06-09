@@ -211,7 +211,7 @@ function PlayerInfo({
                 <TileComponent tileId={t} size="mini" className={rot} />
               </span>
             ) : (
-              <TileComponent key={t} tileId={t} size="discard" />
+              <TileComponent key={t} tileId={t} size="mini" />
             )
           )}
         </div>
