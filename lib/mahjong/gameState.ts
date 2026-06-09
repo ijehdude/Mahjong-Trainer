@@ -944,6 +944,7 @@ function prospectiveWinTai(
     roundWind: state.roundWind,
     selfDraw,
     robKong: false,
+    lastTile: state.wall.every(isBonus),
     bonusTiles: winner.flowers,
     rules: state.rules,
   }).tai;
@@ -1044,6 +1045,7 @@ function computeWin(
     roundWind: state.roundWind,
     selfDraw,
     robKong,
+    lastTile: state.wall.every(isBonus),
     firstTurnWin,
     bonusTiles: winner.flowers,
     rules: state.rules,

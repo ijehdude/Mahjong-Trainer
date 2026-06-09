@@ -34,6 +34,8 @@ interface ScoreContext {
   roundWind: Wind;
   selfDraw: boolean;
   robKong: boolean;
+  /** Won on the very last available tile (last draw or last discard) — 海底. */
+  lastTile: boolean;
   /** Heavenly/Earthly hand (first-turn limit wins), if applicable. */
   firstTurnWin?: "tian" | "di";
   /** The winner's revealed bonus tiles (flowers, seasons and animals). */
@@ -78,6 +80,7 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
     roundWind,
     selfDraw,
     robKong,
+    lastTile,
     firstTurnWin,
     bonusTiles,
     rules,
@@ -91,6 +94,16 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   // not as winning-hand tai. Self-draw adds NO tai — its reward comes from the
   // payment structure (everyone pays) rather than extra points.
   const addBonus = () => {
+    // Fully concealed hand 门清 — no exposed melds (concealed kongs still count
+    // as concealed). +1 tai whether won by self-draw or discard.
+    if (melds.every((m) => m.concealed))
+      breakdown.push({ label: "Fully concealed 门清", tai: 1 });
+
+    // 海底捞月 / 海底捞针 — winning on the very last available tile of the hand
+    // (the last wall draw self-drawn, or the last discard ronned). +1 tai.
+    if (lastTile)
+      breakdown.push({ label: "Last tile 海底捞月", tai: 1 });
+
     if (rules.robbingKong && robKong)
       breakdown.push({ label: "Robbing the kong 抢杠", tai: 1 });
 
