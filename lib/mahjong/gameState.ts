@@ -1153,8 +1153,16 @@ export function startNextHand(state: GameState): GameState {
   // (index 0), the prevailing wind advances (East → South → West → North),
   // giving a full game of at least 4 × n hands.
   const prevDealer = state.dealerIndex;
+  // A kong was declared this hand if any player still holds a kong meld.
+  const anyKong = state.players.some((p) =>
+    p.melds.some((m) => m.type === "kong")
+  );
+  // The dealer keeps the deal (连庄) on their own win, or on a washout — except
+  // a washout in which a kong was declared passes the deal to the next seat.
   const dealerKeeps =
-    state.result === null || state.result.winnerIndex === prevDealer;
+    state.result === null
+      ? !anyKong
+      : state.result.winnerIndex === prevDealer;
   const dealerIndex = dealerKeeps ? prevDealer : (prevDealer + 1) % n;
   const roundWind =
     !dealerKeeps && dealerIndex === 0
