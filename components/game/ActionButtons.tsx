@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ChiOption, KongOption } from "@/types/game";
 import type { TileId } from "@/types/tiles";
+import { rankOf, sortTiles } from "@/lib/mahjong/tiles";
 import TileComponent from "./TileComponent";
 
 /* ===========================================================================
@@ -80,23 +81,32 @@ export default function ActionButtons({
           />
           {chiOpen && (
             <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-1 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[var(--bg-surface)] p-2 shadow-2xl">
-              {chiOptions.map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setChiOpen(false);
-                    onChi?.(opt);
-                  }}
-                  className="flex items-center gap-1 rounded-lg p-1.5 hover:bg-[rgba(255,255,255,0.06)]"
-                >
-                  {discardTile && (
-                    <TileComponent tileId={discardTile} size="mini" />
-                  )}
-                  {opt.tiles.map((t) => (
-                    <TileComponent key={t} tileId={t} size="mini" />
-                  ))}
-                </button>
-              ))}
+              {chiOptions
+                // Show each sequence in tile order, highest sequence on top
+                // (so options read in increasing order from the bottom up).
+                .map((opt) => ({
+                  opt,
+                  seq: sortTiles(
+                    discardTile ? [discardTile, ...opt.tiles] : opt.tiles
+                  ),
+                }))
+                .sort(
+                  (a, b) => (rankOf(b.seq[0]) ?? 0) - (rankOf(a.seq[0]) ?? 0)
+                )
+                .map(({ opt, seq }, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setChiOpen(false);
+                      onChi?.(opt);
+                    }}
+                    className="flex items-center gap-1 rounded-lg p-1.5 hover:bg-[rgba(255,255,255,0.06)]"
+                  >
+                    {seq.map((t) => (
+                      <TileComponent key={t} tileId={t} size="mini" />
+                    ))}
+                  </button>
+                ))}
             </div>
           )}
         </div>
