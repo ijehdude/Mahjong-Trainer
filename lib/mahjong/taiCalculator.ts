@@ -98,8 +98,9 @@ export function calculateTai(ctx: ScoreContext): TaiResult {
   // payment structure (everyone pays) rather than extra points.
   const addBonus = () => {
     // Fully concealed hand 门清 — no exposed melds (concealed kongs still count
-    // as concealed). +1 tai whether won by self-draw or discard.
-    if (melds.every((m) => m.concealed))
+    // as concealed). House rule: only counts on a SELF-DRAWN win; winning off
+    // a discard breaks 门清.
+    if (selfDraw && melds.every((m) => m.concealed))
       breakdown.push({ label: "Fully concealed 门清", tai: 1 });
 
     // 海底捞月 / 海底捞针 — winning on the very last available tile of the hand
