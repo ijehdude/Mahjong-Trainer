@@ -66,28 +66,34 @@ function decomposeSets(
     }
   }
 
-  // Sequence (suited): fill any of the three positions with a joker.
+  // Sequence (suited): fill any of the three positions with a joker. Since
+  // `first` is the lowest remaining real tile, any position below it can only
+  // be a joker; positions above it may be real tiles or jokers.
   if (isSuit(first)) {
     const suit = suitOf(first)!;
     const rank = rankOf(first)!;
-    if (rank <= 7) {
-      const t2 = `${rank + 1}${suit}`;
-      const t3 = `${rank + 2}${suit}`;
-      const need2 = (counts.get(t2) ?? 0) >= 1 ? 0 : 1;
-      const need3 = (counts.get(t3) ?? 0) >= 1 ? 0 : 1;
-      if (jokers >= need2 + need3) {
-        const next = new Map(counts);
-        next.set(first, have - 1);
-        if (!need2) next.set(t2, (next.get(t2) ?? 0) - 1);
-        if (!need3) next.set(t3, (next.get(t3) ?? 0) - 1);
-        const res = decomposeSets(
-          next,
-          setsNeeded - 1,
-          jokers - need2 - need3,
-          [...acc, { type: "sequence", tiles: [first, t2, t3], concealed: true }]
-        );
-        if (res) return res;
+    for (const start of [rank, rank - 1, rank - 2]) {
+      if (start < 1 || start > 7) continue;
+      const seq = [start, start + 1, start + 2].map((r) => `${r}${suit}`);
+      let need = 0;
+      for (const t of seq) {
+        if (t === first) continue;
+        const avail = rankOf(t)! > rank ? (counts.get(t) ?? 0) : 0;
+        if (avail < 1) need++;
       }
+      if (jokers < need) continue;
+      const next = new Map(counts);
+      next.set(first, have - 1);
+      for (const t of seq) {
+        if (t === first) continue;
+        if (rankOf(t)! > rank && (counts.get(t) ?? 0) >= 1)
+          next.set(t, (next.get(t) ?? 0) - 1);
+      }
+      const res = decomposeSets(next, setsNeeded - 1, jokers - need, [
+        ...acc,
+        { type: "sequence", tiles: seq, concealed: true },
+      ]);
+      if (res) return res;
     }
   }
 
