@@ -7,6 +7,7 @@ import {
 } from "@/lib/mahjong/gameState";
 import { DEFAULT_RULES } from "@/types/game";
 import type { GameState } from "@/types/game";
+import { evaluateDiscardLocal } from "@/lib/mahjong/localStrategy";
 import { sortTiles } from "@/lib/mahjong/tiles";
 
 /* Headless driver: human always discards its first sorted tile, passes claims,
@@ -32,6 +33,10 @@ function run(seedLabel: string, rulesOverride = {}) {
       case "player-choose": {
         const human = s.players.find((p) => p.isHuman)!;
         const tile = sortTiles(human.hand)[0];
+        // Exercise the offline coach on every human discard decision.
+        const fb = evaluateDiscardLocal(s, tile);
+        if (!fb.text || !["good", "risky", "okay"].includes(fb.verdict))
+          throw new Error(`coach returned bad feedback: ${JSON.stringify(fb)}`);
         s = humanDiscard(s, tile);
         break;
       }

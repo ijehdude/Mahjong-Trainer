@@ -1,7 +1,10 @@
-import type { GameState } from "@/types/game";
-import type { TileId } from "@/types/tiles";
+import type { GameRules, GameState, Meld } from "@/types/game";
+import type { Suit, TileId, Wind } from "@/types/tiles";
 import type { Verdict } from "@/lib/claude/strategyFeedback";
-import { WIND_NAME } from "@/types/tiles";
+import { DRAGONS, SUIT_NAME, WIND_NAME } from "@/types/tiles";
+import { decomposeWin } from "./handValidator";
+import { shanten, ukeire, type Improvement } from "./shanten";
+import { calculateTai, taiHintFor } from "./taiCalculator";
 import {
   countTiles,
   isFei,
@@ -13,295 +16,600 @@ import {
 } from "./tiles";
 
 /* ===========================================================================
-   Offline strategy coach. A deterministic heuristic that scores every tile in
-   the hand and judges the proposed discard against the best available one —
-   no API call required. Mirrors the {verdict, text} shape of the AI coach.
+   Offline strategy coach.
 
-   Each tile gets two scores:
-     usefulness — how much it helps YOUR hand (pairs, triplets, runs, tai).
-     danger     — how risky it is to throw (deal-in potential vs the table).
-   The best discard minimises (usefulness + danger). The verdict compares the
-   proposed discard to that optimum.
+   For every tile the player could throw, it computes the hand AFTER that
+   discard: shanten (tiles from ready), which draws improve it, and how many
+   of those are still unseen ("live"). The proposed discard is judged against
+   the best alternative on three axes:
+
+     shape  — never give back shanten; prefer more live improving tiles.
+     tai    — Singapore hands must reach the minimum tai to win at all, so
+              the coach tracks scoring direction (flush, value honors, ping
+              hu, all-triplets) and warns when a hand is going "chicken".
+     safety — per-opponent threat (melds, late wall) times tile danger.
+              No furiten here: a tile an opponent discarded earlier is a
+              weaker read, not a guaranteed safe one.
+
+   Mirrors the {verdict, text} shape of the AI coach.
    =========================================================================== */
 
-const DANGER_WEIGHT = 2.5;
-
-interface Scored {
-  tile: TileId;
-  usefulness: number;
-  danger: number;
-  score: number;
+interface OppRead {
+  label: string;
+  meldCount: number;
+  ownDiscards: Set<TileId>;
+  meldedSuits: Map<Suit, number>;
+  threat: number; // ~0.3 quiet … ~1.5 visibly close to winning
 }
 
 interface Ctx {
   hand: TileId[];
   handCount: Map<TileId, number>;
-  seatWind: TileId;
-  roundWind: TileId;
-  /** copies of each tile visible anywhere (hand + all discards + all melds). */
+  melds: Meld[];
+  flowers: TileId[];
+  seatWind: Wind;
+  roundWind: Wind;
   visible: Map<TileId, number>;
-  /** tiles sitting in opponents' discard piles (genbutsu = safe). */
-  oppDiscards: Set<TileId>;
-  /** suits an opponent has melded, with the seat label collecting them. */
-  oppSuits: { suit: string; label: string; melds: number }[];
+  opps: OppRead[];
   wallRemaining: number;
+  rules: GameRules;
+}
+
+interface WaitDetail extends Improvement {
+  ronTai: number; // tai if won off a discard (0 = cannot Hu on a discard)
+  zimoTai: number; // tai if self-drawn
+}
+
+interface Candidate {
+  tile: TileId;
+  sh: number;
+  improvements: Improvement[];
+  totalLive: number;
+  /** Only set at tenpai: each wait scored with the real tai calculator. */
+  waits: WaitDetail[] | null;
+  /** Tenpai win value: live tiles weighted by payout (2^tai), ron-dead
+      waits discounted to a self-draw-only chance. */
+  winValue: number;
+  danger: number;
+  taiBias: number;
+  utility: number;
+}
+
+interface TaiRead {
+  guaranteed: number; // bonus tiles + melded honor pongs (taiHintFor)
+  menqing: boolean; // no exposed melds — 门清 +1 stays possible
+  valueHonorPairs: TileId[]; // concealed pairs of seat/round wind or dragons
+  flushSuit: Suit | null;
+  flushRatio: number; // dominant suit + honors share (half-flush read)
+  pureRatio: number; // dominant suit share (full-flush read)
+  estMax: number; // optimistic ceiling for this hand's tai
 }
 
 function isValueHonor(tile: TileId, ctx: Ctx): boolean {
   return (
     tile === ctx.seatWind ||
     tile === ctx.roundWind ||
-    tile === "zhong" ||
-    tile === "fa" ||
-    tile === "bai"
+    (DRAGONS as string[]).includes(tile)
   );
 }
 
-function usefulness(tile: TileId, ctx: Ctx): number {
-  // A Fei wildcard is the most valuable tile in hand — never discard it.
-  if (isFei(tile)) return 1000;
-  let u = 0;
-  const own = ctx.handCount.get(tile) ?? 0;
-  if (own >= 3) u += 120;
-  else if (own === 2) {
-    u += 42;
-    if (isValueHonor(tile, ctx)) u += 22;
-  }
+/* ---- Context --------------------------------------------------------------- */
 
-  if (isSuit(tile)) {
-    const suit = suitOf(tile)!;
-    const rank = rankOf(tile)!;
-    const has = (r: number) => (ctx.handCount.get(`${r}${suit}`) ?? 0) > 0;
-    const adj = (has(rank - 1) ? 1 : 0) + (has(rank + 1) ? 1 : 0);
-    const gap = (has(rank - 2) ? 1 : 0) + (has(rank + 2) ? 1 : 0);
-    u += adj * 13 + gap * 5;
-    if (rank >= 4 && rank <= 6) u += 3;
-  } else if (isHonor(tile) && own === 1) {
-    u += isValueHonor(tile, ctx) ? 9 : 1;
-  }
-  return u;
-}
-
-function danger(tile: TileId, ctx: Ctx): number {
-  // Genbutsu: an opponent already discarded it -> they can't ron it.
-  if (ctx.oppDiscards.has(tile)) return 0;
-
-  const visible = ctx.visible.get(tile) ?? 0;
-  const unseen = Math.max(0, 4 - visible);
-  if (unseen === 0) return 0; // every copy accounted for
-
-  let base: number;
-  if (isHonor(tile)) {
-    base = isValueHonor(tile, ctx) ? 5 : 4;
-  } else {
-    const rank = rankOf(tile)!;
-    if (rank === 1 || rank === 9) base = 5;
-    else if (rank === 2 || rank === 8) base = 8;
-    else base = 12; // live middle tiles are the most dangerous
-  }
-
-  // Fewer unseen copies -> safer (harder for an opponent to be waiting on it).
-  let d = base * (unseen / 3);
-
-  // Feeding an opponent's flush / melded suit.
-  if (isSuit(tile)) {
-    const suit = suitOf(tile)!;
-    for (const o of ctx.oppSuits) {
-      if (o.suit === suit) d += o.melds >= 2 ? 10 : 6;
-    }
-  }
-
-  // Late game: live tiles get more dangerous as hands near completion.
-  if (ctx.wallRemaining < 20) d *= 1.3;
-
-  return d;
+function threatOf(meldCount: number, taiHint: number, wall: number): number {
+  let t = 0.3 + 0.22 * meldCount;
+  if (wall < 24) t += 0.15;
+  if (wall < 12) t += 0.25;
+  if (taiHint >= 2) t += 0.15;
+  return Math.min(t, 1.5);
 }
 
 function buildContext(state: GameState): Ctx {
   const human = state.players[state.humanIndex];
-  const handCount = countTiles(human.hand);
-
   const visible = new Map<TileId, number>();
   const bump = (t: TileId) => visible.set(t, (visible.get(t) ?? 0) + 1);
-  const oppDiscards = new Set<TileId>();
-  const oppSuitMap = new Map<string, { label: string; melds: number }>();
 
+  const opps: OppRead[] = [];
   for (const p of state.players) {
-    for (const t of p.hand) if (p.isHuman) bump(t);
-    for (const t of p.discards) {
-      bump(t);
-      if (!p.isHuman) oppDiscards.add(t);
+    for (const t of p.discards) bump(t);
+    for (const m of p.melds) for (const t of m.tiles) bump(t);
+    if (p.isHuman) {
+      for (const t of p.hand) bump(t);
+      continue;
     }
+    const meldedSuits = new Map<Suit, number>();
     for (const m of p.melds) {
-      for (const t of m.tiles) bump(t);
-      if (!p.isHuman && isSuit(m.tiles[0])) {
-        const suit = suitOf(m.tiles[0])!;
-        const label = `${WIND_NAME[p.seatWind]} (${p.name})`;
-        const cur = oppSuitMap.get(`${p.index}:${suit}`);
-        oppSuitMap.set(`${p.index}:${suit}`, {
-          label,
-          melds: (cur?.melds ?? 0) + 1,
-        });
-      }
+      const s = suitOf(m.tiles[0]);
+      if (s) meldedSuits.set(s, (meldedSuits.get(s) ?? 0) + 1);
     }
+    const taiHint = taiHintFor(
+      p.flowers,
+      p.melds,
+      p.seatWind,
+      state.roundWind,
+      state.rules
+    );
+    opps.push({
+      label: `${WIND_NAME[p.seatWind]} (${p.name})`,
+      meldCount: p.melds.length,
+      ownDiscards: new Set(p.discards),
+      meldedSuits,
+      threat: threatOf(p.melds.length, taiHint, state.wall.length),
+    });
   }
-
-  const oppSuits = [...oppSuitMap.entries()].map(([key, v]) => ({
-    suit: key.split(":")[1],
-    label: v.label,
-    melds: v.melds,
-  }));
 
   return {
     hand: human.hand,
-    handCount,
+    handCount: countTiles(human.hand),
+    melds: human.melds,
+    flowers: human.flowers,
     seatWind: human.seatWind,
     roundWind: state.roundWind,
     visible,
-    oppDiscards,
-    oppSuits,
+    opps,
     wallRemaining: state.wall.length,
+    rules: state.rules,
   };
 }
 
-function scoreAll(ctx: Ctx): Map<TileId, Scored> {
-  const map = new Map<TileId, Scored>();
+/* ---- Safety ---------------------------------------------------------------- */
+
+function dangerFor(tile: TileId, ctx: Ctx): number {
+  const unseen = Math.max(0, 4 - (ctx.visible.get(tile) ?? 0));
+  let total = 0;
+  for (const opp of ctx.opps) {
+    let d: number;
+    if (isHonor(tile)) {
+      // Honors only deal in as pongs/pairs — they need unseen copies to hold.
+      const base = isValueHonor(tile, ctx) ? 6 : 4;
+      d = base * (unseen >= 2 ? 1 : unseen === 1 ? 0.4 : 0);
+    } else {
+      const r = rankOf(tile)!;
+      // Sequence danger doesn't depend on this tile's own count; pair/pong
+      // danger does.
+      const run = r >= 3 && r <= 7 ? 8 : r === 2 || r === 8 ? 6 : 4;
+      d = run + 3 * (unseen / 3);
+      const sm = opp.meldedSuits.get(suitOf(tile)!) ?? 0;
+      if (sm > 0) d += sm >= 2 ? 9 : 5;
+    }
+    // They threw one earlier themselves — they can still win on it (no
+    // furiten rule), but it suggests they aren't collecting around it.
+    if (opp.ownDiscards.has(tile)) d *= 0.45;
+    total += d * opp.threat;
+  }
+  return total;
+}
+
+/* ---- Tai direction ---------------------------------------------------------- */
+
+function readTai(ctx: Ctx): TaiRead {
+  const structural = [...ctx.hand, ...ctx.melds.flatMap((m) => m.tiles)];
+  const bySuit = new Map<Suit, number>();
+  let honors = 0;
+  let jokers = 0;
+  for (const t of structural) {
+    if (isFei(t)) jokers++;
+    else if (isHonor(t)) honors++;
+    else {
+      const s = suitOf(t);
+      if (s) bySuit.set(s, (bySuit.get(s) ?? 0) + 1);
+    }
+  }
+  let flushSuit: Suit | null = null;
+  let domCount = 0;
+  for (const [s, n] of bySuit) {
+    if (n > domCount) {
+      domCount = n;
+      flushSuit = s;
+    }
+  }
+  const total = Math.max(1, structural.length);
+  const flushRatio = (domCount + honors + jokers) / total;
+  const pureRatio = (domCount + jokers) / total;
+
+  const valueHonorPairs: TileId[] = [];
+  for (const [t, c] of ctx.handCount) {
+    if (c >= 2 && isValueHonor(t, ctx)) valueHonorPairs.push(t);
+  }
+
+  const guaranteed = taiHintFor(
+    ctx.flowers,
+    ctx.melds,
+    ctx.seatWind,
+    ctx.roundWind,
+    ctx.rules
+  );
+  const menqing = ctx.melds.every((m) => m.concealed);
+  const hasPongMeld = ctx.melds.some((m) => m.type !== "chi");
+  const hasChiMeld = ctx.melds.some((m) => m.type === "chi");
+  const hasBonus = ctx.flowers.length > 0;
+
+  // Optimistic ceiling: what could this hand still plausibly score?
+  let estMax = guaranteed;
+  if (menqing) estMax += 1; // 门清 — self-draw only (house rule), but reachable
+  estMax += valueHonorPairs.length; // each could become a scoring triplet
+  if (flushRatio >= 0.8) estMax += pureRatio >= 0.8 ? 4 : 2; // flush in reach
+  if (!hasPongMeld) estMax += hasBonus ? 1 : 4; // (chou) ping hu path alive
+  if (!hasChiMeld) estMax += 2; // all-triplets path alive
+
+  return {
+    guaranteed,
+    menqing,
+    valueHonorPairs,
+    flushSuit,
+    flushRatio,
+    pureRatio,
+    estMax,
+  };
+}
+
+function taiBiasFor(tile: TileId, ctx: Ctx, tai: TaiRead): number {
+  let b = 0;
+  if (tai.flushRatio >= 0.7 && tai.flushSuit) {
+    const s = suitOf(tile);
+    if (s && s !== tai.flushSuit) b += 7; // shedding off-suit feeds the flush
+    else if (s === tai.flushSuit) b -= 5;
+  }
+  if (tai.valueHonorPairs.includes(tile)) b -= 12; // breaking a tai pair
+  return b;
+}
+
+/** Discarding `tile` would leave the hand unable to reach the minimum tai. */
+function killsLastTai(tile: TileId, ctx: Ctx, tai: TaiRead): boolean {
+  if ((ctx.handCount.get(tile) ?? 0) !== 2) return false;
+  if (!tai.valueHonorPairs.includes(tile)) return false;
+  return tai.estMax >= ctx.rules.minTai && tai.estMax - 1 < ctx.rules.minTai;
+}
+
+/* ---- Candidates -------------------------------------------------------------- */
+
+/** Score a tenpai hand's win on `winTile` with the real tai calculator. */
+function winTaiFor(
+  rest: TileId[],
+  winTile: TileId,
+  ctx: Ctx,
+  selfDraw: boolean
+): number {
+  const concealedWin = [...rest, winTile];
+  return calculateTai({
+    decomposition: decomposeWin(concealedWin, ctx.melds),
+    concealedTiles: concealedWin,
+    winningTile: winTile,
+    melds: ctx.melds,
+    seatWind: ctx.seatWind,
+    roundWind: ctx.roundWind,
+    selfDraw,
+    robKong: false,
+    lastTile: false,
+    replacement: null,
+    bonusTiles: ctx.flowers,
+    rules: ctx.rules,
+  }).tai;
+}
+
+function evaluateCandidates(ctx: Ctx, tai: TaiRead): Candidate[] {
+  const liveOf = (t: TileId) => Math.max(0, 4 - (ctx.visible.get(t) ?? 0));
+  const minTai = ctx.rules.minTai;
+  const out: Candidate[] = [];
   for (const tile of new Set(ctx.hand)) {
-    const u = usefulness(tile, ctx);
-    const d = danger(tile, ctx);
-    map.set(tile, { tile, usefulness: u, danger: d, score: u + d * DANGER_WEIGHT });
+    const rest = [...ctx.hand];
+    rest.splice(rest.indexOf(tile), 1);
+    const u = ukeire(rest, ctx.melds.length, liveOf);
+
+    // At tenpai, waits are not equal: a two-sided wait may keep ping hu while
+    // a shanpon kills it, and a sub-minimum ron means self-draw only. Score
+    // each wait with the actual tai calculator (payout doubles per tai).
+    let waits: WaitDetail[] | null = null;
+    let winValue = 0;
+    if (u.shanten === 0) {
+      waits = u.improvements.map((imp) => ({
+        ...imp,
+        ronTai: winTaiFor(rest, imp.tile, ctx, false),
+        zimoTai: winTaiFor(rest, imp.tile, ctx, true),
+      }));
+      for (const w of waits) {
+        if (w.ronTai >= minTai) winValue += w.live * 2 ** Math.min(w.ronTai, 5);
+        else if (w.zimoTai >= minTai)
+          winValue += w.live * 0.35 * 2 ** Math.min(w.zimoTai, 5);
+      }
+    }
+
+    out.push({
+      tile,
+      sh: u.shanten,
+      improvements: u.improvements,
+      totalLive: u.totalLive,
+      waits,
+      winValue,
+      danger: dangerFor(tile, ctx),
+      taiBias: taiBiasFor(tile, ctx, tai),
+      utility: 0,
+    });
   }
-  return map;
+  return out;
 }
 
-/* ---- Explanation builders ------------------------------------------------- */
+/* ---- Text helpers -------------------------------------------------------------- */
 
-function shapeReason(tile: TileId, ctx: Ctx): string {
-  if (isFei(tile))
-    return "the Fei wildcard can complete any set or pair — almost never discard it";
-  const own = ctx.handCount.get(tile) ?? 0;
-  const name = tileName(tile);
-  if (own >= 3) return `you already hold three ${name} — throwing it breaks a triplet`;
-  if (own === 2) {
-    return isValueHonor(tile, ctx)
-      ? `you hold a pair of ${name}, a step toward a scoring triplet`
-      : `you hold a pair of ${name} that could become a triplet`;
-  }
-  if (isSuit(tile)) {
-    const suit = suitOf(tile)!;
-    const rank = rankOf(tile)!;
-    const has = (r: number) => (ctx.handCount.get(`${r}${suit}`) ?? 0) > 0;
-    if (has(rank - 1) || has(rank + 1))
-      return `it links with neighbouring ${tileName(tile).split(" ")[1]} tiles for a sequence`;
-    if (has(rank - 2) || has(rank + 2))
-      return `it has a one-gap partner for a possible sequence`;
-    return `it is an isolated tile with no pair or run`;
-  }
-  if (isValueHonor(tile, ctx))
-    return `it is a value honor — pairing it could score tai`;
-  return `it is a lone honor with no pair`;
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function safetyReason(tile: TileId, ctx: Ctx): string {
+function waitList(imps: Improvement[], max = 4): string {
+  const sorted = [...imps].sort((a, b) => b.live - a.live);
+  const shown = sorted.slice(0, max).map((i) => tileName(i.tile));
+  const extra = sorted.length - shown.length;
+  return shown.join(", ") + (extra > 0 ? ` (+${extra} more)` : "");
+}
+
+/** ", worth N tai on a win" — or a self-draw-only warning for ron-dead waits. */
+function waitTaiNote(c: Candidate, minTai: number): string {
+  if (!c.waits) return "";
+  const winnable = c.waits.filter((w) => w.live > 0);
+  if (winnable.length === 0) return "";
+  const ronable = winnable.filter((w) => w.ronTai >= minTai);
+  if (ronable.length === 0) {
+    return winnable.some((w) => w.zimoTai >= minTai)
+      ? ` — but a discard win would fall below the ${minTai}-tai minimum, so you can only Hu by self-draw`
+      : "";
+  }
+  const tais = ronable.map((w) => w.ronTai);
+  const lo = Math.min(...tais);
+  const hi = Math.max(...tais);
+  return lo === hi
+    ? `, worth ${lo} tai on a win`
+    : `, worth ${lo}–${hi} tai depending on the winning tile`;
+}
+
+function shapePhrase(c: Candidate, minTai: number): string {
+  if (c.sh <= 0) {
+    const thin = c.totalLive <= 2 ? " — a thin wait" : "";
+    return `you'd be ready, waiting on ${waitList(c.improvements)} (${c.totalLive} winning tile${
+      c.totalLive === 1 ? "" : "s"
+    } unseen${thin})${waitTaiNote(c, minTai)}`;
+  }
+  if (c.sh === 1)
+    return `you'd be one tile from ready, with ${c.totalLive} useful draws still unseen`;
+  return `you'd be ${c.sh} steps from ready (${c.totalLive} useful draws unseen)`;
+}
+
+function shortShape(c: Candidate, minTai: number): string {
+  if (c.sh <= 0)
+    return `keeps you ready on ${waitList(c.improvements, 3)} (${c.totalLive} live${waitTaiNote(c, minTai)})`;
+  if (c.sh === 1) return `keeps you one from ready with ${c.totalLive} live draws`;
+  return `keeps you ${c.sh} away with ${c.totalLive} live draws`;
+}
+
+interface SafetyNote {
+  text: string;
+  warning: boolean;
+}
+
+function safetyPhrase(tile: TileId, ctx: Ctx): SafetyNote | null {
   const name = tileName(tile);
-  if (ctx.oppDiscards.has(tile))
-    return `${name} is already in an opponent's discards, so it can't deal in`;
   const visible = ctx.visible.get(tile) ?? 0;
-  if (visible >= 3) return `most copies of ${name} are already out, so it's low risk`;
-  if (isSuit(tile)) {
-    const rank = rankOf(tile)!;
-    if (rank >= 3 && rank <= 7)
-      return `${name} is a live middle tile and could feed a waiting hand`;
-    return `${name} is a terminal and relatively safe to release`;
+  for (const opp of ctx.opps) {
+    const s = suitOf(tile);
+    if (s && (opp.meldedSuits.get(s) ?? 0) >= 2)
+      return {
+        text: `${opp.label} is clearly collecting ${SUIT_NAME[s]} — this feeds their hand`,
+        warning: true,
+      };
   }
-  return `${name} is a fairly safe tile to release`;
+  if (isHonor(tile)) {
+    if (visible >= 2)
+      return {
+        text: `${name} can no longer be ponged, so it's a safe release`,
+        warning: false,
+      };
+    if (visible === 0 && isValueHonor(tile, ctx) && ctx.wallRemaining < 40)
+      return {
+        text: `no ${name} has appeared yet — someone may be sitting on a pair`,
+        warning: true,
+      };
+    return null;
+  }
+  const r = rankOf(tile)!;
+  for (const opp of ctx.opps) {
+    const s = suitOf(tile)!;
+    if ((opp.meldedSuits.get(s) ?? 0) === 1 && opp.threat >= 0.6)
+      return {
+        text: `${opp.label} has melded ${SUIT_NAME[s]} — feeding that suit is risky`,
+        warning: true,
+      };
+  }
+  if (visible >= 3)
+    return {
+      text: `nearly every ${name} is already visible, so it's low risk`,
+      warning: false,
+    };
+  if (r >= 3 && r <= 7 && ctx.wallRemaining < 24)
+    return {
+      text: `a live middle tile this late can feed a waiting hand`,
+      warning: true,
+    };
+  return null;
 }
 
-function opponentReason(tile: TileId, ctx: Ctx): string | null {
-  if (!isSuit(tile)) return null;
-  const suit = suitOf(tile)!;
-  const hit = ctx.oppSuits.find((o) => o.suit === suit);
-  if (!hit) return null;
-  const suitWord = tileName(tile).split(" ")[1];
-  return `${hit.label} has melded ${suitWord} — feeding that suit is risky`;
-}
-
-/* ---- Public API ----------------------------------------------------------- */
+/* ---- Public API -------------------------------------------------------------- */
 
 export function evaluateDiscardLocal(
   state: GameState,
   proposed: TileId
 ): { verdict: Verdict; text: string } {
   const ctx = buildContext(state);
-  const scores = scoreAll(ctx);
-  const me = scores.get(proposed)!;
-
-  const sorted = [...scores.values()].sort((a, b) => a.score - b.score);
-  const best = sorted[0];
-  const gap = me.score - best.score;
   const detailed = state.rules.feedbackDetail === "detailed";
+  const minTai = ctx.rules.minTai;
+
+  // The hand is already complete and declarable — say so before anything else.
+  if (state.canSelfDrawWin) {
+    return {
+      verdict: "risky",
+      text: "Your hand is complete — declare the self-draw win instead of discarding! Only break it up if you are deliberately fishing for a bigger hand.",
+    };
+  }
+
+  const tai = readTai(ctx);
+  const candidates = evaluateCandidates(ctx, tai);
+  const byTile = new Map(candidates.map((c) => [c.tile, c]));
+  const me = byTile.get(proposed)!;
+
+  const peers = candidates.filter((c) => !isFei(c.tile));
+  const minSh = Math.min(...peers.map((c) => c.sh));
+  const dw =
+    minSh <= 0 ? 0.5
+    : minSh === 1 ? 0.8
+    : minSh === 2 ? 1.2
+    : ctx.wallRemaining < 16 ? 2.2
+    : 1.4;
+  for (const c of candidates)
+    c.utility =
+      (c.sh === 0 ? c.winValue * 3 : c.totalLive * 3) +
+      c.taiBias -
+      c.danger * dw;
+
+  const sameSh = peers
+    .filter((c) => c.sh === minSh)
+    .sort((a, b) => b.utility - a.utility);
+  const best = sameSh[0];
+  const maxLive = Math.max(...sameSh.map((c) => c.totalLive));
+  const foldMode = minSh >= 3 && ctx.wallRemaining < 16;
+  const safest = [...peers].sort((a, b) => a.danger - b.danger)[0];
 
   // ---- Verdict ----------------------------------------------------------
   let verdict: Verdict;
-  const brokeShape = me.usefulness >= 40; // breaking a pair/triplet
-  const hasShape = me.usefulness >= 12; // part of a run/connected
-  const muchBetterShape = best.usefulness < me.usefulness - 15;
-  const proposedDanger = me.danger * DANGER_WEIGHT;
-  const saferAltExists =
-    best.danger * DANGER_WEIGHT <= proposedDanger - 12 &&
-    best.usefulness <= me.usefulness + 6;
+  let lead: string;
+  const suggest = best.tile !== proposed
+    ? `${tileName(best.tile)} ${shortShape(best, minTai)}.`
+    : null;
 
-  if (best.tile === proposed || gap <= 6) {
-    verdict = "good"; // optimal or all-but-tied with it
-  } else if (brokeShape && muchBetterShape) {
-    verdict = "risky"; // throwing away strong shape
-  } else if (proposedDanger >= 25 && saferAltExists) {
-    verdict = "risky"; // dangerous with a clearly safer option
-  } else if (gap <= 24) {
-    verdict = "okay";
-  } else {
-    // A large gap, but it's neither dangerous nor breaking shape: only "risky"
-    // if the tile carries real shape value worth keeping; otherwise it's fine.
-    verdict = hasShape ? "risky" : "okay";
-  }
-
-  // ---- Explanation ------------------------------------------------------
-  const oppR = opponentReason(proposed, ctx);
-  const shapeR = shapeReason(proposed, ctx);
-  const safeR = safetyReason(proposed, ctx);
-  const betterName = best.tile !== proposed ? tileName(best.tile) : null;
-  const suggestion = betterName ? `${betterName} is the safer release here` : null;
-
-  let text: string;
-  if (verdict === "good") {
-    text = detailed
-      ? `${capitalize(safeR)}. Also, ${shapeR}, so letting it go costs you little.`
-      : `${capitalize(safeR)}.`;
-  } else if (verdict === "risky") {
-    // Risk is driven by shape, danger, or feeding an opponent — lead with that.
-    if (brokeShape || hasShape) {
-      const tail = suggestion ? ` ${capitalize(suggestion)}.` : "";
-      text = detailed
-        ? `${capitalize(shapeR)} — keep it.${tail} Shed a more isolated tile instead.`
-        : `${capitalize(shapeR)} — keep it.${tail}`;
+  if (isFei(proposed)) {
+    verdict = "risky";
+    lead = `The Fei wildcard can complete any set or pair — almost never let it go.${
+      suggest ? ` ${capitalize(suggest)}` : ""
+    }`;
+  } else if (foldMode) {
+    // Hand is too far back with the wall almost gone: judge purely on safety.
+    const gap = me.danger - safest.danger;
+    const why = safetyPhrase(proposed, ctx);
+    const fallback = `With your hand still ${minSh} from ready and only ${ctx.wallRemaining} tiles left, winning is unlikely — play defence.`;
+    if (gap <= 3) {
+      verdict = "good";
+      lead = `Good defence: ${
+        why && !why.warning ? why.text : `this is among the safest tiles you hold`
+      }. ${fallback}`;
     } else {
-      const lead = oppR ? capitalize(oppR) : capitalize(safeR);
-      const tail = suggestion
-        ? ` ${capitalize(suggestion)}.`
-        : " A safer tile is the better throw here.";
-      text = `${lead}.${tail}`;
+      verdict = gap >= 12 || (why?.warning ?? false) ? "risky" : "okay";
+      const safer = safetyPhrase(safest.tile, ctx);
+      lead = `${capitalize(
+        why?.warning ? why.text : `there are safer tiles than ${tileName(proposed)}`
+      )}. ${fallback} ${capitalize(
+        `${tileName(safest.tile)} is the safest throw${safer && !safer.warning ? ` (${safer.text})` : ""}.`
+      )}`;
     }
+  } else if (killsLastTai(proposed, ctx, tai)) {
+    verdict = "risky";
+    lead = `The ${tileName(proposed)} pair is your only tai source — break it and this hand can't reach the ${minTai}-tai minimum even when complete. Keep it.${
+      suggest ? ` ${capitalize(suggest)}` : ""
+    }`;
+  } else if (me.sh > minSh) {
+    if (minSh === 0) {
+      verdict = "risky";
+      lead = `That drops you out of ready — keep ${tileName(proposed)}. ${capitalize(
+        suggest ?? ""
+      )}`;
+    } else {
+      verdict = "risky";
+      lead = `That sets your hand back: ${shapePhrase(me, minTai)}.${
+        suggest ? ` Better: ${suggest}` : ""
+      }`;
+    }
+  } else if (minSh === 0 && me.totalLive === 0 && maxLive > 0) {
+    verdict = "risky";
+    lead = `You'd be ready, but every tile of your wait is already visible — a dead hand. ${capitalize(
+      suggest ?? ""
+    )}`;
   } else {
-    // okay
-    const lead = hasShape ? capitalize(shapeR) : capitalize(safeR);
-    const extra = oppR ? ` ${capitalize(oppR)}.` : "";
-    const tail = suggestion ? ` ${capitalize(suggestion)}.` : "";
-    text = detailed ? `${lead}.${extra}${tail}` : `${lead}.${tail}`;
+    const utilGap = best.utility - me.utility;
+    const liveGap = maxLive - me.totalLive;
+    const dangerous =
+      me.danger * dw >= 18 && best.danger * dw <= me.danger * dw - 8;
+    // At tenpai, compare candidates by win value (outs × payout), which
+    // captures wait width AND tai differences (e.g. two-sided keeps ping hu,
+    // shanpon kills it). Off tenpai, fall back to the utility margin.
+    const valueRatio =
+      minSh === 0 && best.winValue > 0 ? me.winValue / best.winValue : null;
+    const shapeFine = valueRatio !== null ? valueRatio >= 0.75 : utilGap <= 9;
+    if (proposed === best.tile || shapeFine) {
+      verdict = "good";
+      lead = `${capitalize(shapePhrase(me, minTai))}.`;
+      const pairDead =
+        (ctx.handCount.get(proposed) ?? 0) === 2 &&
+        Math.max(0, 4 - (ctx.visible.get(proposed) ?? 0)) === 0;
+      if (pairDead)
+        lead += ` Both other ${tileName(proposed)} are visible, so that pair could never have completed.`;
+    } else if (dangerous) {
+      verdict = me.danger * dw >= 28 ? "risky" : "okay";
+      const why = safetyPhrase(proposed, ctx);
+      lead = `${capitalize(why?.text ?? `${tileName(proposed)} is a risky release right now`)}. ${capitalize(
+        suggest ?? "A safer tile does the same job."
+      )}`;
+    } else if (valueRatio !== null) {
+      verdict = valueRatio < 0.35 ? "risky" : "okay";
+      lead = `You'd still be ready, but ${tileName(best.tile)} is the stronger wait: it ${shortShape(
+        best,
+        minTai
+      )}. This discard waits on ${waitList(me.improvements, 3)} (${me.totalLive} live${waitTaiNote(
+        me,
+        minTai
+      )}).`;
+    } else if (liveGap >= 6) {
+      verdict = "okay";
+      lead = `Workable, but ${tileName(best.tile)} is better shape — it ${shortShape(
+        best,
+        minTai
+      )}, versus ${me.totalLive} if you throw ${tileName(proposed)}.`;
+    } else {
+      verdict = "okay";
+      lead = `Fine — ${shapePhrase(me, minTai)}. ${
+        suggest ? `Slightly better: ${suggest}` : ""
+      }`;
+    }
   }
 
-  return { verdict, text };
-}
+  // ---- Extra coaching lines ----------------------------------------------
+  const extras: string[] = [];
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  // A hand that can no longer reach the minimum tai must be flagged loudly.
+  if (tai.estMax < minTai) {
+    extras.push(
+      `Warning: this hand has no remaining path to ${minTai} tai — it cannot win as built. Steer back toward a flush, value-honor triplets, or all triplets.`
+    );
+  } else if (detailed && !foldMode) {
+    if (tai.guaranteed === 0 && !tai.menqing && tai.valueHonorPairs.length > 0)
+      extras.push(
+        `Tai check: your ${tai.valueHonorPairs
+          .map(tileName)
+          .join(" and ")} pair is what keeps this hand able to score — protect it.`
+      );
+    else if (tai.flushRatio >= 0.75 && tai.flushSuit)
+      extras.push(
+        `Tai check: your hand leans ${SUIT_NAME[tai.flushSuit]} — keep shedding off-suit tiles and the ${
+          tai.pureRatio >= 0.75 ? "full flush (+4 tai)" : "half flush (+2 tai)"
+        } stays alive.`
+      );
+  }
+
+  if (detailed && verdict === "good" && !foldMode) {
+    const why = safetyPhrase(proposed, ctx);
+    if (why)
+      extras.push(
+        why.warning
+          ? `Watch it though: ${why.text} — no alternative keeps your shape, so stay alert.`
+          : `${capitalize(why.text)}.`
+      );
+    if (suggest && best.totalLive > me.totalLive + 2)
+      extras.push(`Slightly better still: ${suggest}`);
+  }
+  const text = [lead.trim(), ...extras].filter(Boolean).join(" ");
+  return { verdict, text };
 }
