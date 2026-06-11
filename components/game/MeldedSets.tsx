@@ -12,6 +12,8 @@ interface Props {
   orient?: Orient;
   /** Show concealed-kong tiles face up (e.g. the winning-hand reveal). */
   revealConcealed?: boolean;
+  /** Owner's view: concealed-kong tiles face up but ghosted (see-through). */
+  ghostConcealed?: boolean;
 }
 
 export default function MeldedSets({
@@ -19,6 +21,7 @@ export default function MeldedSets({
   size = "meld",
   orient = "up",
   revealConcealed = false,
+  ghostConcealed = false,
 }: Props) {
   if (!melds.length) return null;
 
@@ -33,18 +36,21 @@ export default function MeldedSets({
             key={i}
             className="flex flex-col gap-px rounded-md bg-[rgba(0,0,0,0.18)] p-0.5"
           >
-            {meld.tiles.map((t, j) => (
-              <span key={j} className="flex h-6 w-8 items-center justify-center">
-                <TileComponent
-                  tileId={t}
-                  size="mini"
-                  className={rot}
-                  faceDown={
-                    meld.type === "kong" && meld.concealed && !revealConcealed
-                  }
-                />
-              </span>
-            ))}
+            {meld.tiles.map((t, j) => {
+              const hidden =
+                meld.type === "kong" && meld.concealed && !revealConcealed;
+              return (
+                <span key={j} className="flex h-6 w-8 items-center justify-center">
+                  <TileComponent
+                    tileId={t}
+                    size="mini"
+                    className={rot}
+                    faceDown={hidden && !ghostConcealed}
+                    dimmed={hidden && ghostConcealed}
+                  />
+                </span>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -58,14 +64,19 @@ export default function MeldedSets({
           key={i}
           className="flex items-center gap-px rounded-md bg-[rgba(0,0,0,0.18)] p-0.5"
         >
-          {meld.tiles.map((t, j) => (
-            <TileComponent
-              key={j}
-              tileId={t}
-              size={size}
-              faceDown={meld.type === "kong" && meld.concealed && !revealConcealed}
-            />
-          ))}
+          {meld.tiles.map((t, j) => {
+            const hidden =
+              meld.type === "kong" && meld.concealed && !revealConcealed;
+            return (
+              <TileComponent
+                key={j}
+                tileId={t}
+                size={size}
+                faceDown={hidden && !ghostConcealed}
+                dimmed={hidden && ghostConcealed}
+              />
+            );
+          })}
         </div>
       ))}
     </div>

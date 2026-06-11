@@ -77,7 +77,7 @@ export default function GameTable({ state }: Props) {
 
       {/* Self (bottom) — stack already shown in the header, so hide it here. */}
       <div className="mt-2 flex justify-center">
-        <PlayerInfo view={self} align="center" hideCount hideStack rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={self} align="center" hideCount hideStack ghostConcealed rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
     </div>
   );
@@ -120,6 +120,7 @@ function PlayerInfo({
   vertical = false,
   hideCount = false,
   hideStack = false,
+  ghostConcealed = false,
   side,
   rules,
   roundWind,
@@ -135,6 +136,7 @@ function PlayerInfo({
   vertical?: boolean;
   hideCount?: boolean;
   hideStack?: boolean;
+  ghostConcealed?: boolean;
   side?: "left" | "right";
   rules: GameState["rules"];
   roundWind: GameState["roundWind"];
@@ -215,6 +217,7 @@ function PlayerInfo({
           melds={player.melds}
           size="mini"
           orient={side ?? "up"}
+          ghostConcealed={ghostConcealed}
         />
       )}
       {player.flowers.length > 0 && (

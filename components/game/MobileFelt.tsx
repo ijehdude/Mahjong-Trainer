@@ -98,7 +98,7 @@ export default function MobileFelt({ state }: Props) {
               <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
                 你 YOU
               </span>
-              <MeldedSets melds={self.player.melds} size="mini" />
+              <MeldedSets melds={self.player.melds} size="mini" ghostConcealed />
             </div>
           )}
         </div>
