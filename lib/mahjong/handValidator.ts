@@ -189,8 +189,10 @@ export function isThirteenOrphans(concealed: TileId[], melds: Meld[]): boolean {
 }
 
 /**
- * Seven Pairs (七对子): a fully concealed hand of seven pairs. Fei wildcards may
- * fill a missing half-pair.
+ * Seven Pairs (七对子): a fully concealed hand of seven DISTINCT pairs. Fei
+ * wildcards may fill a missing half-pair. Four of a kind is a kong, not two
+ * pairs, so any tile held more than twice invalidates the hand (a third copy
+ * could only ever form a duplicate pair, even with a joker).
  */
 export function isSevenPairs(concealed: TileId[], melds: Meld[]): boolean {
   if (melds.length > 0 || concealed.length !== 14) return false;
@@ -199,8 +201,9 @@ export function isSevenPairs(concealed: TileId[], melds: Meld[]): boolean {
   let pairs = 0;
   let singles = 0;
   for (const c of counts.values()) {
-    pairs += Math.floor(c / 2);
-    singles += c % 2;
+    if (c > 2) return false;
+    if (c === 2) pairs++;
+    else singles++;
   }
   // Each leftover single needs a joker; remaining jokers must pair among
   // themselves. Total must come to exactly seven pairs.

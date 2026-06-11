@@ -50,6 +50,17 @@ expect(
   ),
   0
 );
+// A quad is a kong, not two pairs: 5 distinct pairs + 4x west is NOT a win
+// (best path: discard a dead west, pair the next draw → shanten 1).
+const quadHand: TileId[] = [
+  "7wan","7wan","2tong","2tong","6tong","6tong","4bam","4bam","8bam","8bam","west","west","west","west",
+];
+expect("seven pairs: quad is not two pairs", shanten(quadHand, 0), 1);
+if (isWinningHand(quadHand, [])) {
+  failures++;
+  console.error("FAIL quad accepted as two pairs by isWinningHand");
+}
+
 expect(
   "joker completes the pair",
   shanten(

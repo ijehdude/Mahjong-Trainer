@@ -132,13 +132,14 @@ function maxKeepStandard(
   return best;
 }
 
-/** Seven pairs: keep 2 per pair, seed one tile per missing pair, jokers fill. */
+/** Seven pairs: keep 2 per pair, seed one tile per missing pair, jokers fill.
+    Pairs must be distinct — copies beyond the second of a type are dead. */
 function shantenSevenPairs(counts: number[], jokers: number): number {
   let pairs = 0;
   let singles = 0;
   for (const c of counts) {
-    pairs += c >> 1;
-    singles += c & 1;
+    if (c >= 2) pairs++;
+    else if (c === 1) singles++;
   }
   const P = Math.min(pairs, 7);
   const keep = Math.min(2 * P + Math.min(singles, 7 - P) + jokers, 14);
