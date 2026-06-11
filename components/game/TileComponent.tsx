@@ -9,7 +9,14 @@ import TileFace from "./TileFace";
    (TileFace). No images or emoji; everything is drawn in CSS/SVG.
    =========================================================================== */
 
-export type TileSize = "hand" | "handfit" | "discard" | "meld" | "mini" | "tiny";
+export type TileSize =
+  | "hand"
+  | "handfit"
+  | "discard"
+  | "pool"
+  | "meld"
+  | "mini"
+  | "tiny";
 
 const SIZE: Record<TileSize, string> = {
   hand: "w-12 h-16 rounded-lg p-1",
@@ -17,6 +24,9 @@ const SIZE: Record<TileSize, string> = {
   // screen (no horizontal scroll), full size on tablet/desktop.
   handfit: "w-6 h-9 rounded p-px md:w-12 md:h-16 md:rounded-lg md:p-1",
   discard: "w-8 h-11 rounded-md p-0.5",
+  // Desktop central discard pile — sized so four rows of 24 fit the pile
+  // area without clipping.
+  pool: "w-[26px] h-9 rounded p-0.5",
   meld: "w-7 h-10 rounded-md p-0.5",
   mini: "w-6 h-8 rounded p-px",
   // Smallest face — used to pack a full discard pile into one screen on mobile.

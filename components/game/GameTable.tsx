@@ -75,9 +75,9 @@ export default function GameTable({ state }: Props) {
         <PlayerInfo view={right} vertical side="right" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
-      {/* Self (bottom) */}
+      {/* Self (bottom) — stack already shown in the header, so hide it here. */}
       <div className="mt-2 flex justify-center">
-        <PlayerInfo view={self} align="center" hideCount rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={self} align="center" hideCount hideStack rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
     </div>
   );
@@ -94,14 +94,14 @@ function DiscardCenter({ state }: { state: GameState }) {
     );
   }
   return (
-    // Desktop central pile: readable tiles, capped so 24 fit per row before
-    // wrapping into the (otherwise unused) vertical space below.
-    <div className="flex max-w-[880px] flex-wrap content-start justify-center gap-1">
+    // Desktop central pile: capped so 24 fit per row, sized so four rows
+    // (96 tiles — more than a full game's discards) fit without clipping.
+    <div className="flex max-w-[672px] flex-wrap content-start justify-center gap-0.5">
       {pile.map((d, i) => (
         <TileComponent
           key={i}
           tileId={d.tile}
-          size="discard"
+          size="pool"
           recent={i === lastIdx}
         />
       ))}
@@ -109,11 +109,17 @@ function DiscardCenter({ state }: { state: GameState }) {
   );
 }
 
+function money(n: number): string {
+  const sign = n < 0 ? "-" : "";
+  return `${sign}$${Math.abs(n).toFixed(2)}`;
+}
+
 function PlayerInfo({
   view,
   align = "start",
   vertical = false,
   hideCount = false,
+  hideStack = false,
   side,
   rules,
   roundWind,
@@ -128,6 +134,7 @@ function PlayerInfo({
   align?: "start" | "center";
   vertical?: boolean;
   hideCount?: boolean;
+  hideStack?: boolean;
   side?: "left" | "right";
   rules: GameState["rules"];
   roundWind: GameState["roundWind"];
@@ -192,6 +199,17 @@ function PlayerInfo({
           </span>
         )}
       </div>
+      {!hideStack && (
+        <span
+          className={`text-[9px] font-semibold ${
+            player.stack < 0
+              ? "text-[var(--feedback-wrong)]"
+              : "text-[var(--accent-gold)]/80"
+          }`}
+        >
+          {money(player.stack)}
+        </span>
+      )}
       {player.melds.length > 0 && (
         <MeldedSets
           melds={player.melds}
