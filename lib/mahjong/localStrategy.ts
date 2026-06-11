@@ -443,7 +443,7 @@ export function evaluateDiscardLocal(
   // The hand is already complete and declarable — say so before anything else.
   if (state.canSelfDrawWin) {
     return {
-      verdict: "risky",
+      verdict: "mistake",
       text: "Your hand is complete — declare the self-draw win instead of discarding! Only break it up if you are deliberately fishing for a bigger hand.",
     };
   }
@@ -483,7 +483,7 @@ export function evaluateDiscardLocal(
     : null;
 
   if (isFei(proposed)) {
-    verdict = "risky";
+    verdict = "mistake";
     lead = `The Fei wildcard can complete any set or pair — almost never let it go.${
       suggest ? ` ${capitalize(suggest)}` : ""
     }`;
@@ -493,12 +493,12 @@ export function evaluateDiscardLocal(
     const why = safetyPhrase(proposed, ctx);
     const fallback = `With your hand still ${minSh} from ready and only ${ctx.wallRemaining} tiles left, winning is unlikely — play defence.`;
     if (gap <= 3) {
-      verdict = "good";
+      verdict = "best";
       lead = `Good defence: ${
         why && !why.warning ? why.text : `this is among the safest tiles you hold`
       }. ${fallback}`;
     } else {
-      verdict = gap >= 12 || (why?.warning ?? false) ? "risky" : "okay";
+      verdict = gap >= 12 || (why?.warning ?? false) ? "mistake" : "risky";
       const safer = safetyPhrase(safest.tile, ctx);
       lead = `${capitalize(
         why?.warning ? why.text : `there are safer tiles than ${tileName(proposed)}`
@@ -507,24 +507,24 @@ export function evaluateDiscardLocal(
       )}`;
     }
   } else if (killsLastTai(proposed, ctx, tai)) {
-    verdict = "risky";
+    verdict = "mistake";
     lead = `The ${tileName(proposed)} pair is your only tai source — break it and this hand can't reach the ${minTai}-tai minimum even when complete. Keep it.${
       suggest ? ` ${capitalize(suggest)}` : ""
     }`;
   } else if (me.sh > minSh) {
     if (minSh === 0) {
-      verdict = "risky";
+      verdict = "mistake";
       lead = `That drops you out of ready — keep ${tileName(proposed)}. ${capitalize(
         suggest ?? ""
       )}`;
     } else {
-      verdict = "risky";
+      verdict = "mistake";
       lead = `That sets your hand back: ${shapePhrase(me, minTai)}.${
         suggest ? ` Better: ${suggest}` : ""
       }`;
     }
   } else if (minSh === 0 && me.totalLive === 0 && maxLive > 0) {
-    verdict = "risky";
+    verdict = "mistake";
     lead = `You'd be ready, but every tile of your wait is already visible — a dead hand. ${capitalize(
       suggest ?? ""
     )}`;
@@ -539,22 +539,29 @@ export function evaluateDiscardLocal(
     const valueRatio =
       minSh === 0 && best.winValue > 0 ? me.winValue / best.winValue : null;
     const shapeFine = valueRatio !== null ? valueRatio >= 0.75 : utilGap <= 9;
-    if (proposed === best.tile || shapeFine) {
-      verdict = "good";
-      lead = `${capitalize(shapePhrase(me, minTai))}.`;
-      const pairDead =
-        (ctx.handCount.get(proposed) ?? 0) === 2 &&
-        Math.max(0, 4 - (ctx.visible.get(proposed) ?? 0)) === 0;
-      if (pairDead)
-        lead += ` Both other ${tileName(proposed)} are visible, so that pair could never have completed.`;
+    const pairDead =
+      (ctx.handCount.get(proposed) ?? 0) === 2 &&
+      Math.max(0, 4 - (ctx.visible.get(proposed) ?? 0)) === 0;
+    const pairDeadNote = pairDead
+      ? ` Both other ${tileName(proposed)} are visible, so that pair could never have completed.`
+      : "";
+    if (proposed === best.tile) {
+      verdict = "best";
+      lead = `${capitalize(shapePhrase(me, minTai))}.${pairDeadNote}`;
     } else if (dangerous) {
-      verdict = me.danger * dw >= 28 ? "risky" : "okay";
+      // Keeps the hand's speed but feeds danger.
+      verdict = me.danger * dw >= 28 ? "mistake" : "risky";
       const why = safetyPhrase(proposed, ctx);
       lead = `${capitalize(why?.text ?? `${tileName(proposed)} is a risky release right now`)}. ${capitalize(
         suggest ?? "A safer tile does the same job."
       )}`;
+    } else if (shapeFine) {
+      verdict = "fine";
+      lead = `${capitalize(shapePhrase(me, minTai))}.${pairDeadNote}${
+        suggest ? ` Slightly better: ${suggest}` : ""
+      }`;
     } else if (valueRatio !== null) {
-      verdict = valueRatio < 0.35 ? "risky" : "okay";
+      verdict = valueRatio < 0.35 ? "risky" : "fine";
       lead = `You'd still be ready, but ${tileName(best.tile)} is the stronger wait: it ${shortShape(
         best,
         minTai
@@ -563,13 +570,13 @@ export function evaluateDiscardLocal(
         minTai
       )}).`;
     } else if (liveGap >= 6) {
-      verdict = "okay";
+      verdict = "fine";
       lead = `Workable, but ${tileName(best.tile)} is better shape — it ${shortShape(
         best,
         minTai
       )}, versus ${me.totalLive} if you throw ${tileName(proposed)}.`;
     } else {
-      verdict = "okay";
+      verdict = "fine";
       lead = `Fine — ${shapePhrase(me, minTai)}. ${
         suggest ? `Slightly better: ${suggest}` : ""
       }`;
@@ -599,7 +606,7 @@ export function evaluateDiscardLocal(
       );
   }
 
-  if (detailed && verdict === "good" && !foldMode) {
+  if (detailed && (verdict === "best" || verdict === "fine") && !foldMode) {
     const why = safetyPhrase(proposed, ctx);
     if (why)
       extras.push(

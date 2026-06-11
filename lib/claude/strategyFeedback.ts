@@ -9,7 +9,7 @@ import { indexForSeat } from "@/lib/mahjong/gameState";
    coach's response from /api/strategy.
    =========================================================================== */
 
-export type Verdict = "good" | "risky" | "okay";
+export type Verdict = "best" | "fine" | "risky" | "mistake";
 
 export interface StrategyFeedback {
   verdict: Verdict;
@@ -60,15 +60,21 @@ export function buildStrategyRequest(
 
 function parseVerdict(raw: string): Verdict {
   const head = raw.trimStart().slice(0, 8).toUpperCase();
-  if (head.startsWith("GOOD")) return "good";
+  if (head.startsWith("BEST")) return "best";
+  if (head.startsWith("FINE")) return "fine";
   if (head.startsWith("RISKY")) return "risky";
-  if (head.startsWith("OKAY")) return "okay";
-  return "okay";
+  if (head.startsWith("MISTAKE")) return "mistake";
+  // Legacy tokens, in case the model falls back to the old scale.
+  if (head.startsWith("GOOD")) return "best";
+  if (head.startsWith("OKAY")) return "fine";
+  return "fine";
 }
 
 /** Strip the leading verdict token from the streamed text. */
 function stripVerdict(raw: string): string {
-  return raw.replace(/^\s*(GOOD|RISKY|OKAY)\b[\s:.\-—]*/i, "").trimStart();
+  return raw
+    .replace(/^\s*(BEST|FINE|RISKY|MISTAKE|GOOD|OKAY)\b[\s:.\-—]*/i, "")
+    .trimStart();
 }
 
 /**

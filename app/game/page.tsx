@@ -171,8 +171,9 @@ export default function GamePage() {
   const handleDiscard = () => {
     if (!selected) return;
     abortRef.current?.abort();
-    // "risky" counts as a wrong discard; "good"/"okay" count as correct.
-    const wasCorrect = feedback.verdict !== "risky";
+    // "risky"/"mistake" count as wrong discards; "best"/"fine" as correct.
+    const wasCorrect =
+      feedback.verdict !== "risky" && feedback.verdict !== "mistake";
     setLastDiscardFeedback({
       tile: selected,
       verdict: feedback.verdict,

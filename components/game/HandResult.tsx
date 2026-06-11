@@ -170,18 +170,22 @@ export default function HandResult({
             </div>
             <div
               className={`mt-1 text-sm ${
-                lastDiscard.verdict === "good"
+                lastDiscard.verdict === "best"
                   ? "text-[var(--feedback-correct)]"
-                  : lastDiscard.verdict === "risky"
-                    ? "text-[var(--feedback-wrong)]"
-                    : "text-[var(--feedback-neutral)]"
+                  : lastDiscard.verdict === "fine"
+                    ? "text-[var(--text-muted)]"
+                    : lastDiscard.verdict === "mistake"
+                      ? "text-[var(--feedback-wrong)]"
+                      : "text-[var(--feedback-neutral)]"
               }`}
             >
-              {lastDiscard.verdict === "good"
+              {lastDiscard.verdict === "best"
                 ? "✓ "
-                : lastDiscard.verdict === "risky"
-                  ? "✗ "
-                  : "~ "}
+                : lastDiscard.verdict === "fine"
+                  ? "○ "
+                  : lastDiscard.verdict === "mistake"
+                    ? "✗ "
+                    : "~ "}
               {lastDiscard.text || "无反馈记录 No feedback recorded."}
             </div>
           </div>

@@ -20,23 +20,29 @@ const VERDICT_META: Record<
   Verdict,
   { icon: string; title: (t: string) => string; color: string; bg: string }
 > = {
-  good: {
+  best: {
     icon: "✓",
-    title: (t) => `打 ${t} 是好选择 · Good discard`,
+    title: (t) => `打 ${t} 是最佳选择 · Best discard`,
     color: "var(--feedback-correct)",
     bg: "rgba(39,174,96,0.12)",
   },
+  fine: {
+    icon: "○",
+    title: (t) => `打 ${t} 可以 · Fine`,
+    color: "var(--text-muted)",
+    bg: "rgba(138,171,149,0.12)",
+  },
   risky: {
+    icon: "~",
+    title: () => `有风险 · Risky`,
+    color: "var(--accent-gold)",
+    bg: "rgba(201,168,76,0.12)",
+  },
+  mistake: {
     icon: "✗",
-    title: (t) => `有风险 · 考虑留下 ${t}`,
+    title: (t) => `失误 · 考虑留下 ${t}`,
     color: "var(--feedback-wrong)",
     bg: "rgba(231,76,60,0.12)",
-  },
-  okay: {
-    icon: "~",
-    title: () => `尚可，但可考虑… · Reasonable, but…`,
-    color: "var(--feedback-neutral)",
-    bg: "rgba(201,168,76,0.12)",
   },
 };
 
