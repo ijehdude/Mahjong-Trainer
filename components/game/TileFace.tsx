@@ -57,11 +57,19 @@ const BAMBOO_POS: Record<number, Pt[]> = {
   ],
 };
 
-const PIP_PALETTE: { a: string; b: string }[] = [
-  { a: GREEN, b: RED },
-  { a: BLUE, b: GREEN },
-  { a: RED, b: BLUE },
-];
+// Per-pip colours for circles 2-9, matching a traditional set (pip order
+// follows CIRCLE_POS: left→right, top→bottom). Each pip is a single colour
+// drawn as concentric rings.
+const CIRCLE_COLORS: Record<number, string[]> = {
+  2: [GREEN, BLUE],
+  3: [GREEN, RED, BLUE],
+  4: [BLUE, GREEN, GREEN, BLUE],
+  5: [GREEN, BLUE, RED, GREEN, BLUE],
+  6: [GREEN, GREEN, RED, RED, RED, RED],
+  7: [GREEN, GREEN, GREEN, RED, RED, RED, RED],
+  8: [BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE],
+  9: [GREEN, GREEN, GREEN, RED, RED, RED, BLUE, BLUE, BLUE],
+};
 
 function dotRadius(n: number): number {
   if (n <= 2) return 7;
@@ -72,14 +80,15 @@ function dotRadius(n: number): number {
 
 function CircleFace({ n }: { n: number }) {
   if (n === 1) {
-    // Ornate single circle.
+    // Ornate single circle: blue outer ring, green middle, red centre.
     return (
       <g>
         <circle cx={18} cy={25} r={11} fill={BLUE} />
         <circle cx={18} cy={25} r={8.7} fill={FACE} />
-        <circle cx={18} cy={25} r={7} fill={RED} />
+        <circle cx={18} cy={25} r={7} fill={GREEN} />
         <circle cx={18} cy={25} r={4.6} fill={FACE} />
-        <circle cx={18} cy={25} r={2.8} fill={GREEN} />
+        <circle cx={18} cy={25} r={3.4} fill={RED} />
+        <circle cx={18} cy={25} r={1.4} fill={FACE} />
       </g>
     );
   }
@@ -87,12 +96,12 @@ function CircleFace({ n }: { n: number }) {
   return (
     <g>
       {CIRCLE_POS[n].map(([cx, cy], i) => {
-        const { a, b } = PIP_PALETTE[i % PIP_PALETTE.length];
+        const c = CIRCLE_COLORS[n][i];
         return (
           <g key={i}>
-            <circle cx={cx} cy={cy} r={r} fill={a} />
+            <circle cx={cx} cy={cy} r={r} fill={c} />
             <circle cx={cx} cy={cy} r={r * 0.72} fill={FACE} />
-            <circle cx={cx} cy={cy} r={r * 0.54} fill={b} />
+            <circle cx={cx} cy={cy} r={r * 0.54} fill={c} />
             <circle cx={cx} cy={cy} r={r * 0.24} fill={FACE} />
           </g>
         );
