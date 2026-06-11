@@ -10,12 +10,15 @@ interface Props {
   size?: TileSize;
   /** "left"/"right" rotate tiles 90° so they face a side player. */
   orient?: Orient;
+  /** Show concealed-kong tiles face up (e.g. the winning-hand reveal). */
+  revealConcealed?: boolean;
 }
 
 export default function MeldedSets({
   melds,
   size = "meld",
   orient = "up",
+  revealConcealed = false,
 }: Props) {
   if (!melds.length) return null;
 
@@ -37,7 +40,7 @@ export default function MeldedSets({
                   size="mini"
                   className={rot}
                   faceDown={
-                    meld.type === "kong" && meld.concealed && (j === 0 || j === 3)
+                    meld.type === "kong" && meld.concealed && !revealConcealed
                   }
                 />
               </span>
@@ -60,7 +63,7 @@ export default function MeldedSets({
               key={j}
               tileId={t}
               size={size}
-              faceDown={meld.type === "kong" && meld.concealed && (j === 0 || j === 3)}
+              faceDown={meld.type === "kong" && meld.concealed && !revealConcealed}
             />
           ))}
         </div>

@@ -79,7 +79,7 @@ export default function HandResult({
               </div>
               {result.handMelds.length > 0 && (
                 <div className="mt-1.5">
-                  <MeldedSets melds={result.handMelds} size="discard" />
+                  <MeldedSets melds={result.handMelds} size="discard" revealConcealed />
                 </div>
               )}
               {result.handFlowers.length > 0 && (
