@@ -57,6 +57,15 @@ const BAMBOO_POS: Record<number, Pt[]> = {
   ],
 };
 
+// Per-stick colours for bamboo (order follows BAMBOO_POS), matching a
+// traditional set: red centre on 5, red top + blue middle column on 7,
+// red middle column on 9. Unlisted ranks are all green.
+const BAMBOO_COLORS: Record<number, string[]> = {
+  5: [GREEN, GREEN, RED, GREEN, GREEN],
+  7: [RED, GREEN, BLUE, GREEN, GREEN, BLUE, GREEN],
+  9: [GREEN, RED, GREEN, GREEN, RED, GREEN, GREEN, RED, GREEN],
+};
+
 // Per-pip colours for circles 2-9, matching a traditional set (pip order
 // follows CIRCLE_POS: left→right, top→bottom). Each pip is a single colour
 // drawn as concentric rings.
@@ -115,17 +124,16 @@ function Stick({
   cy,
   w,
   h,
-  red,
+  color = GREEN,
   angle = 0,
 }: {
   cx: number;
   cy: number;
   w: number;
   h: number;
-  red?: boolean;
+  color?: string;
   angle?: number;
 }) {
-  const color = red ? RED : GREEN;
   return (
     <g transform={angle ? `rotate(${angle} ${cx} ${cy})` : undefined}>
       <rect
@@ -170,25 +178,19 @@ function Stick({
 
 function BambooFace({ n }: { n: number }) {
   if (n === 1) return <BirdIllustration />;
-  // 8 bamboo: two "M" clusters (four sticks each, zig-zag tilt).
+  // 8 bamboo: a "W" cluster on top, an "M" cluster below (four sticks each).
   if (n === 8) {
     const xs = [10, 15.5, 21, 26.5];
-    // Converging tops form peaks → "M" shapes (not valleys → "W").
-    const angles = [18, -18, 18, -18];
+    const wAngles = [-18, 18, -18, 18]; // \/\/ — valley first
+    const mAngles = [18, -18, 18, -18]; // /\/\ — peak first
     return (
       <g>
-        {[14, 36].map((cy, ci) =>
-          xs.map((x, i) => (
-            <Stick
-              key={ci * 4 + i}
-              cx={x}
-              cy={cy}
-              w={4}
-              h={13}
-              angle={angles[i]}
-            />
-          ))
-        )}
+        {xs.map((x, i) => (
+          <Stick key={`w${i}`} cx={x} cy={14} w={4} h={13} angle={wAngles[i]} />
+        ))}
+        {xs.map((x, i) => (
+          <Stick key={`m${i}`} cx={x} cy={36} w={4} h={13} angle={mAngles[i]} />
+        ))}
       </g>
     );
   }
@@ -196,13 +198,11 @@ function BambooFace({ n }: { n: number }) {
   const threeRow = n >= 9;
   const h = threeRow ? 11 : n >= 6 ? 13 : 15;
   const w = n >= 6 ? 4 : 4.8;
-  // which pip is red (tradition: centre/top accents)
-  const redIndex =
-    n === 5 ? 2 : n === 7 ? 0 : n === 9 ? 4 : -1;
+  const colors = BAMBOO_COLORS[n];
   return (
     <g>
       {positions.map(([cx, cy], i) => (
-        <Stick key={i} cx={cx} cy={cy} w={w} h={h} red={i === redIndex} />
+        <Stick key={i} cx={cx} cy={cy} w={w} h={h} color={colors?.[i]} />
       ))}
     </g>
   );
