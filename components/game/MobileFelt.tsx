@@ -5,6 +5,7 @@ import type { GameState, RelativeSeat } from "@/types/game";
 import { WIND_NAME } from "@/types/tiles";
 import { indexForSeat } from "@/lib/mahjong/gameState";
 import { taiHintFor } from "@/lib/mahjong/taiCalculator";
+import ActionBubble from "./ActionBubble";
 import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
@@ -57,8 +58,32 @@ export default function MobileFelt({ state }: Props) {
   const pile = state.discardPile;
   const lastIdx = pile.length - 1;
 
+  const bubblesFor = (v: SeatInfo | null) =>
+    v ? state.bubbles.filter((b) => b.playerIndex === v.player.index) : [];
+
   return (
-    <div className="felt-glow flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.05)] p-1.5">
+    <div className="felt-glow relative flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.05)] p-1.5">
+      {/* Action bubbles, anchored near each seat's name label */}
+      <ActionBubble
+        events={bubblesFor(across)}
+        className="left-1/2 top-7 -translate-x-1/2"
+        tail="up"
+      />
+      <ActionBubble
+        events={bubblesFor(left)}
+        className="left-[62px] top-14"
+        tail="up"
+      />
+      <ActionBubble
+        events={bubblesFor(right)}
+        className="right-[62px] top-14"
+        tail="up"
+      />
+      <ActionBubble
+        events={bubblesFor(self)}
+        isHuman
+        className="bottom-1.5 left-1/2 -translate-x-1/2"
+      />
       <div className="grid h-full w-full grid-cols-[58px_1fr_58px] gap-1">
         {/* Left side player */}
         <SideInfo view={left} side="left" />

@@ -101,6 +101,16 @@ export interface ClaimOptions {
   robKong?: boolean; // this "win" claim is a chance to rob an added kong
 }
 
+/** A transient Mandarin action announcement (碰/吃/杠/咬/补花/自摸/胡),
+    shown as a chat bubble next to the acting player. */
+export interface ActionBubbleEvent {
+  id: number; // monotonic within a hand
+  playerIndex: number;
+  text: string; // e.g. "碰！"
+  sub?: string; // small second line, e.g. "猫咬鼠"
+  sticky?: boolean; // 胡/自摸 persist until the result overlay
+}
+
 /** A single mid-hand payment between players (kong bonus, 咬 bites, 正花),
     recorded for the hand-result breakdown. */
 export interface PayEvent {
@@ -150,6 +160,8 @@ export interface GameState {
   payAnim: { deltas: number[]; id: number } | null;
   /** Mid-hand payments (kong bonus / 咬 / 正花) for the result breakdown. */
   payEvents: PayEvent[];
+  /** Action announcements for chat bubbles, reset each hand. */
+  bubbles: ActionBubbleEvent[];
   roundWind: Wind;
   /** Index of the current dealer (East). Rotates between hands. */
   dealerIndex: number;

@@ -67,6 +67,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     deadWallFlowers: [],
     payAnim: null,
     payEvents: [],
+    bubbles: [],
     roundWind: "east",
     dealerIndex: 0, // seat 0 starts as East / dealer; rotates each hand
     turnIndex: 0, // dealer (East) starts
@@ -223,8 +224,10 @@ function doDraw(state: GameState): GameState {
         ? [...state.log, `${me.name} reveals ${flowersAdded.length} bonus tile(s).`]
         : state.log,
   };
-  if (flowersAdded.length)
+  if (flowersAdded.length) {
+    next = withBubble(next, state.turnIndex, "补花");
     next = applyBonusPayments(next, state.turnIndex, flowersAdded);
+  }
   return botPostDraw(next, state.turnIndex);
 }
 
@@ -275,6 +278,7 @@ function settleBonusAndDraw(state: GameState): GameState {
     pendingBonus: null,
     log: [...state.log, `${me.name} reveals a bonus tile.`],
   };
+  s = withBubble(s, state.humanIndex, "补花");
   s = applyBonusPayments(s, state.humanIndex, [bonus]);
   // The replacement tile drawn after a flower scores 花上开花 on a self-draw.
   return doHumanDraw(s, "flower");
@@ -446,6 +450,23 @@ function applyKongBonus(
   );
 }
 
+/** Append a chat-bubble announcement (碰/吃/杠/咬/补花/胡…) for the UI. */
+function withBubble(
+  state: GameState,
+  playerIndex: number,
+  text: string,
+  opts?: { sub?: string; sticky?: boolean }
+): GameState {
+  const id = (state.bubbles[state.bubbles.length - 1]?.id ?? 0) + 1;
+  return {
+    ...state,
+    bubbles: [
+      ...state.bubbles,
+      { id, playerIndex, text, sub: opts?.sub, sticky: opts?.sticky },
+    ],
+  };
+}
+
 /** Attach floating payment deltas (vs `before`) for the UI to animate. */
 function withPayAnim(state: GameState, before: Player[]): GameState {
   const deltas = state.players.map(
@@ -500,13 +521,18 @@ function applyAnimalPair(
     players[playerIndex].stack = round(players[playerIndex].stack + collected);
     const humanDelta =
       players[s.humanIndex].stack - s.players[s.humanIndex].stack;
-    s = {
-      ...s,
-      players,
-      payEvents: [...s.payEvents, ...events],
-      pnl: round(s.pnl + humanDelta),
-      log: [...s.log, `${players[playerIndex].name} collects an animal pair.`],
-    };
+    s = withBubble(
+      {
+        ...s,
+        players,
+        payEvents: [...s.payEvents, ...events],
+        pnl: round(s.pnl + humanDelta),
+        log: [...s.log, `${players[playerIndex].name} collects an animal pair.`],
+      },
+      playerIndex,
+      "咬！",
+      { sub: note }
+    );
   }
   return s;
 }
@@ -572,13 +598,18 @@ function applyFlowerPayment(
     }
     const humanDelta =
       players[s.humanIndex].stack - s.players[s.humanIndex].stack;
-    s = {
-      ...s,
-      players,
-      payEvents: [...s.payEvents, ...events],
-      pnl: round(s.pnl + humanDelta),
-      log: [...s.log, `${players[holderIndex].name} — seat flower pair.`],
-    };
+    s = withBubble(
+      {
+        ...s,
+        players,
+        payEvents: [...s.payEvents, ...events],
+        pnl: round(s.pnl + humanDelta),
+        log: [...s.log, `${players[holderIndex].name} — seat flower pair.`],
+      },
+      holderIndex,
+      "咬！",
+      { sub: holderIndex === ownerIndex ? "正花" : "花咬" }
+    );
   }
   return s;
 }
@@ -619,7 +650,10 @@ function afterKongDraw(state: GameState, index: number): GameState {
     claim: null,
     pendingKong: null,
   };
-  if (flowersAdded.length) s = applyBonusPayments(s, index, flowersAdded);
+  if (flowersAdded.length) {
+    s = withBubble(s, index, "补花");
+    s = applyBonusPayments(s, index, flowersAdded);
+  }
   if (me.isHuman) {
     return {
       ...s,
@@ -645,12 +679,16 @@ function completeConcealedKong(
     { type: "kong", tiles: [tile, tile, tile, tile], concealed: true },
   ];
   const withBonus = applyKongBonus(
-    {
-      ...state,
-      players,
-      kongOptions: [],
-      log: [...state.log, `${me.name} declares a concealed KONG.`],
-    },
+    withBubble(
+      {
+        ...state,
+        players,
+        kongOptions: [],
+        log: [...state.log, `${me.name} declares a concealed KONG.`],
+      },
+      index,
+      "杠！"
+    ),
     index,
     "concealed"
   );
@@ -672,12 +710,16 @@ function completeAddedKong(
       : m
   );
   const withBonus = applyKongBonus(
-    {
-      ...state,
-      players,
-      kongOptions: [],
-      log: [...state.log, `${me.name} declares an added KONG.`],
-    },
+    withBubble(
+      {
+        ...state,
+        players,
+        kongOptions: [],
+        log: [...state.log, `${me.name} declares an added KONG.`],
+      },
+      index,
+      "杠！"
+    ),
     index,
     "added"
   );
@@ -933,18 +975,19 @@ function applyMeld(
       ...disc.discards.slice(di + 1),
     ];
 
-  const base: GameState = {
-    ...state,
-    players,
-    discardPile: removeFromPile(state.discardPile, discarderIndex, tile),
-    turnIndex: claimerIndex,
-    lastDiscard: null,
-    claim: null,
-    log: [
-      ...state.log,
-      `${claimer.name} declares ${type.toUpperCase()}.`,
-    ],
-  };
+  const base: GameState = withBubble(
+    {
+      ...state,
+      players,
+      discardPile: removeFromPile(state.discardPile, discarderIndex, tile),
+      turnIndex: claimerIndex,
+      lastDiscard: null,
+      claim: null,
+      log: [...state.log, `${claimer.name} declares ${type.toUpperCase()}.`],
+    },
+    claimerIndex,
+    type === "chi" ? "吃！" : type === "pong" ? "碰！" : "杠！"
+  );
 
   // An exposed Kong off a discard: the discarder pays the bonus.
   if (type === "kong") {
@@ -1142,24 +1185,29 @@ function computeWin(
     !selfDraw && !robKong && winningTile
       ? removeFromPile(state.discardPile, discarderIndex!, winningTile)
       : state.discardPile;
-  return {
-    ...state,
-    players,
-    discardPile,
-    phase: "hand-over",
-    result,
-    claim: null,
-    lastDiscard: null,
-    pendingKong: null,
-    kongOptions: [],
-    pnl: Math.round((state.pnl + humanDelta) * 100) / 100,
-    log: [
-      ...state.log,
-      `${winner.name} wins ${tai} tai${
-        selfDraw ? " (self-draw)" : robKong ? " (robbing the kong)" : ""
-      }.`,
-    ],
-  };
+  return withBubble(
+    {
+      ...state,
+      players,
+      discardPile,
+      phase: "hand-over",
+      result,
+      claim: null,
+      lastDiscard: null,
+      pendingKong: null,
+      kongOptions: [],
+      pnl: Math.round((state.pnl + humanDelta) * 100) / 100,
+      log: [
+        ...state.log,
+        `${winner.name} wins ${tai} tai${
+          selfDraw ? " (self-draw)" : robKong ? " (robbing the kong)" : ""
+        }.`,
+      ],
+    },
+    winnerIndex,
+    selfDraw ? "自摸！" : "胡！",
+    { sticky: true }
+  );
 }
 
 function endExhausted(state: GameState): GameState {
@@ -1234,6 +1282,7 @@ export function startNextHand(state: GameState): GameState {
     dealerIndex,
     roundWind,
     payEvents: [],
+    bubbles: [],
     turnIndex: dealerIndex, // the dealer draws first
     phase: "await-draw",
     discardPile: [],

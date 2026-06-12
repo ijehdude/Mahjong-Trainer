@@ -57,6 +57,8 @@ export default function GamePage() {
   const [taiHint, setTaiHint] = useState(true);
   // Show the dice-roll seat ceremony before each new game.
   const [ceremony, setCeremony] = useState(true);
+  // The result overlay is held back briefly so the 胡！/自摸！ bubble reads.
+  const [resultVisible, setResultVisible] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -104,6 +106,16 @@ export default function GamePage() {
     }, delay);
     return () => clearTimeout(id);
   }, [state]);
+
+  // ---- Hand-over: delay the overlay so the win bubble is visible ---------
+  useEffect(() => {
+    if (state?.phase !== "hand-over") {
+      setResultVisible(false);
+      return;
+    }
+    const id = setTimeout(() => setResultVisible(true), state.result ? 1400 : 400);
+    return () => clearTimeout(id);
+  }, [state?.phase, state?.result]);
 
   // ---- Strategy feedback on pre-select (local = instant, AI = streamed) --
   useEffect(() => {
@@ -381,7 +393,7 @@ export default function GamePage() {
       </div>
 
       {/* Hand-over overlay */}
-      {state.phase === "hand-over" && (
+      {state.phase === "hand-over" && resultVisible && (
         <HandResult
           state={state}
           lastDiscard={lastDiscardFeedback}

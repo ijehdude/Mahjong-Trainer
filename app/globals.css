@@ -180,3 +180,18 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+@keyframes bubble-in {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-bubble-in {
+  animation: bubble-in 150ms ease-out;
+}

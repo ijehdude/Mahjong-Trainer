@@ -4,6 +4,7 @@ import type { GameState, RelativeSeat } from "@/types/game";
 import { WIND_NAME } from "@/types/tiles";
 import { indexForSeat } from "@/lib/mahjong/gameState";
 import { taiHintFor } from "@/lib/mahjong/taiCalculator";
+import ActionBubble from "./ActionBubble";
 import MeldedSets from "./MeldedSets";
 import TileComponent from "./TileComponent";
 
@@ -48,13 +49,13 @@ export default function GameTable({ state }: Props) {
 
       {/* Across (top) */}
       <div className="mt-2 flex justify-center">
-        <PlayerInfo view={across} align="center" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={across} align="center" bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Middle row: left player | central discard pile | right player,
           all vertically centred — discards sit in the middle of the table. */}
       <div className="mt-2 flex min-h-0 flex-1 items-center gap-2">
-        <PlayerInfo view={left} vertical side="left" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={left} vertical side="left" bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1 self-stretch justify-center">
           {/* Wall count */}
@@ -72,12 +73,12 @@ export default function GameTable({ state }: Props) {
           </div>
         </div>
 
-        <PlayerInfo view={right} vertical side="right" rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={right} vertical side="right" bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Self (bottom) — stack already shown in the header, so hide it here. */}
       <div className="mt-2 flex justify-center">
-        <PlayerInfo view={self} align="center" hideCount hideStack ghostConcealed rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={self} align="center" hideCount hideStack ghostConcealed bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
     </div>
   );
@@ -122,6 +123,7 @@ function PlayerInfo({
   hideStack = false,
   ghostConcealed = false,
   side,
+  bubbles,
   rules,
   roundWind,
   payAnim,
@@ -138,6 +140,7 @@ function PlayerInfo({
   hideStack?: boolean;
   ghostConcealed?: boolean;
   side?: "left" | "right";
+  bubbles: GameState["bubbles"];
   rules: GameState["rules"];
   roundWind: GameState["roundWind"];
   payAnim: GameState["payAnim"];
@@ -159,6 +162,11 @@ function PlayerInfo({
         align === "center" ? "items-center" : "max-w-[120px] items-start"
       }`}
     >
+      <ActionBubble
+        events={bubbles.filter((b) => b.playerIndex === player.index)}
+        isHuman={player.isHuman}
+        className="bottom-full left-1/2 mb-1.5 -translate-x-1/2"
+      />
       {payAnim && delta !== 0 && (
         <span
           key={payAnim.id}
