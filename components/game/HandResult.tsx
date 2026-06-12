@@ -1,6 +1,6 @@
 "use client";
 
-import type { GameState } from "@/types/game";
+import type { GameState, PayEvent } from "@/types/game";
 import type { Verdict } from "@/lib/claude/strategyFeedback";
 import { sortTiles, tileName } from "@/lib/mahjong/tiles";
 import Button from "@/components/shared/Button";
@@ -21,6 +21,108 @@ interface Props {
 function money(n: number): string {
   const sign = n < 0 ? "-" : "+";
   return `${sign}$${Math.abs(n).toFixed(2)}`;
+}
+
+/** "(咬 — 猫咬鼠)"-style label for a mid-hand payment event. */
+function eventLabel(e: PayEvent): string {
+  if (e.kind === "kong") return `杠 — ${e.note} kong bonus`;
+  if (e.kind === "animal") return `咬 — ${e.note}`;
+  return e.note === "正花"
+    ? "正花 — own seat flower pair"
+    : "咬 — holds their flower+season pair";
+}
+
+/** Mid-hand bonus payments (kong / 咬 / 正花) as one line item each. */
+function BonusPayList({ state }: { state: GameState }) {
+  if (state.payEvents.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-1 border-t border-[rgba(255,255,255,0.07)] pt-2">
+      <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+        本局即付 Bonus payments during the hand
+      </div>
+      {state.payEvents.map((e, i) => (
+        <div key={i} className="text-[11px] text-[var(--text-primary)]/85">
+          <span className="font-semibold">{state.players[e.from].name}</span>
+          {" pays "}
+          <span className="font-semibold">{state.players[e.to].name}</span>{" "}
+          <span className="font-bold text-[var(--feedback-correct)]">
+            ${e.amount.toFixed(2)}
+          </span>{" "}
+          <span className="text-[var(--text-muted)]">({eventLabel(e)})</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Who paid whom this hand: winner row, every loser row, plus bonus events. */
+function PaymentBreakdown({ state }: { state: GameState }) {
+  const { result } = state;
+  if (!result) {
+    // Washout: only the mid-hand bonus payments are worth showing.
+    if (state.payEvents.length === 0) return null;
+    return (
+      <div className="rounded-xl border border-[rgba(255,255,255,0.07)] p-3">
+        <BonusPayList state={state} />
+      </div>
+    );
+  }
+
+  const winner = state.players[result.winnerIndex];
+  const losers = state.players.filter(
+    (p) => p.index !== result.winnerIndex && result.payments[p.index] !== 0
+  );
+  const row = (p: (typeof state.players)[number]) => {
+    const amt = result.payments[p.index];
+    const isWinner = p.index === result.winnerIndex;
+    const isDiscarder = !result.selfDraw && p.index === result.discarderIndex;
+    return (
+      <div key={p.index} className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-[var(--text-primary)]">
+            {p.name} · {p.seatWind.toUpperCase()}
+          </span>
+          {isWinner && (
+            <span className="rounded bg-[rgba(39,174,96,0.2)] px-1 py-0.5 text-[9px] font-bold text-[var(--feedback-correct)]">
+              胡
+            </span>
+          )}
+          {isDiscarder && (
+            <span className="rounded bg-[rgba(231,76,60,0.25)] px-1 py-0.5 text-[9px] font-bold text-[#e8a59d]">
+              放铳
+            </span>
+          )}
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span
+            className={`text-xs font-bold ${
+              amt >= 0
+                ? "text-[var(--feedback-correct)]"
+                : "text-[var(--feedback-wrong)]"
+            }`}
+          >
+            {money(amt)}
+          </span>
+          <span className="text-[10px] text-[var(--text-muted)]">
+            筹码 ${p.stack.toFixed(2)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="rounded-xl border border-[rgba(255,255,255,0.07)] p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+        结算 Payment breakdown
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {row(winner)}
+        {losers.map(row)}
+      </div>
+      <BonusPayList state={state} />
+    </div>
+  );
 }
 
 export default function HandResult({
@@ -159,6 +261,16 @@ export default function HandResult({
                 </div>
               </div>
             </div>
+
+            {/* Who paid whom */}
+            <PaymentBreakdown state={state} />
+          </div>
+        )}
+
+        {/* Washout: still show any mid-hand bonus payments */}
+        {!result && state.payEvents.length > 0 && (
+          <div className="px-6 py-4">
+            <PaymentBreakdown state={state} />
           </div>
         )}
 

@@ -101,11 +101,24 @@ export interface ClaimOptions {
   robKong?: boolean; // this "win" claim is a chance to rob an added kong
 }
 
+/** A single mid-hand payment between players (kong bonus, 咬 bites, 正花),
+    recorded for the hand-result breakdown. */
+export interface PayEvent {
+  from: number; // payer index
+  to: number; // receiver index
+  amount: number; // dollars, > 0
+  kind: "kong" | "animal" | "flower";
+  /** Short label, e.g. "猫咬鼠", "正花", "暗杠". */
+  note: string;
+}
+
 export interface WinResult {
   winnerIndex: number;
   winningTile: TileId | null; // null if special
   selfDraw: boolean;
   robKong: boolean; // won by robbing an added kong (抢杠)
+  /** Who fed the winning tile (放铳); null on self-draw. */
+  discarderIndex: number | null;
   tai: number;
   taiBreakdown: { label: string; tai: number }[];
   limit: boolean; // a recognised limit hand was scored
@@ -135,6 +148,8 @@ export interface GameState {
   deadWallFlowers: TileId[]; // replacement draws
   /** Transient per-player payment deltas to float on screen (bonus/kong). */
   payAnim: { deltas: number[]; id: number } | null;
+  /** Mid-hand payments (kong bonus / 咬 / 正花) for the result breakdown. */
+  payEvents: PayEvent[];
   roundWind: Wind;
   /** Index of the current dealer (East). Rotates between hands. */
   dealerIndex: number;

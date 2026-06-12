@@ -4,6 +4,7 @@ import type {
   GameState,
   KongOption,
   Meld,
+  PayEvent,
   Player,
   RelativeSeat,
   WinResult,
@@ -65,6 +66,7 @@ export function createGame(rules: GameRules, seatIndex?: number): GameState {
     wall: dealt.wall,
     deadWallFlowers: [],
     payAnim: null,
+    payEvents: [],
     roundWind: "east",
     dealerIndex: 0, // seat 0 starts as East / dealer; rotates each hand
     turnIndex: 0, // dealer (East) starts
@@ -394,12 +396,22 @@ function applyKongBonus(
   const rate = state.rules.payoutRate;
   const players = state.players.map((p) => ({ ...p }));
   const round = (x: number) => Math.round(x * 100) / 100;
+  const events: PayEvent[] = [];
+  const kongNote =
+    kind === "exposed" ? "明杠" : kind === "concealed" ? "暗杠" : "加杠";
   let collected = 0;
 
   if (kind === "exposed" && discarderIndex !== undefined) {
     const amt = round(3 * rate);
     players[discarderIndex].stack = round(players[discarderIndex].stack - amt);
     collected = amt;
+    events.push({
+      from: discarderIndex,
+      to: kongerIndex,
+      amount: amt,
+      kind: "kong",
+      note: kongNote,
+    });
   } else {
     const per = (kind === "concealed" ? 2 : 1) * rate;
     for (let j = 0; j < players.length; j++) {
@@ -407,6 +419,13 @@ function applyKongBonus(
       const amt = round(per);
       players[j].stack = round(players[j].stack - amt);
       collected += amt;
+      events.push({
+        from: j,
+        to: kongerIndex,
+        amount: amt,
+        kind: "kong",
+        note: kongNote,
+      });
     }
   }
   players[kongerIndex].stack = round(players[kongerIndex].stack + collected);
@@ -416,6 +435,7 @@ function applyKongBonus(
     {
       ...state,
       players,
+      payEvents: [...state.payEvents, ...events],
       pnl: round(state.pnl + humanDelta),
       log: [
         ...state.log,
@@ -459,14 +479,23 @@ function applyAnimalPair(
     const justCompleted =
       has(a) && has(b) && (added.includes(a) || added.includes(b));
     if (!justCompleted) continue;
+    const note = a === "cat" ? "猫咬鼠" : "鸡咬蜈蚣";
     const rate = s.rules.payoutRate;
     const players = s.players.map((p) => ({ ...p }));
     const round = (x: number) => Math.round(x * 100) / 100;
+    const events: PayEvent[] = [];
     let collected = 0;
     for (let j = 0; j < players.length; j++) {
       if (j === playerIndex) continue;
       players[j].stack = round(players[j].stack - rate);
       collected += rate;
+      events.push({
+        from: j,
+        to: playerIndex,
+        amount: round(rate),
+        kind: "animal",
+        note,
+      });
     }
     players[playerIndex].stack = round(players[playerIndex].stack + collected);
     const humanDelta =
@@ -474,6 +503,7 @@ function applyAnimalPair(
     s = {
       ...s,
       players,
+      payEvents: [...s.payEvents, ...events],
       pnl: round(s.pnl + humanDelta),
       log: [...s.log, `${players[playerIndex].name} collects an animal pair.`],
     };
@@ -511,6 +541,7 @@ function applyFlowerPayment(
 
     const rate = s.rules.payoutRate;
     const players = s.players.map((p) => ({ ...p }));
+    const events: PayEvent[] = [];
     if (holderIndex === ownerIndex) {
       // 正花 pair — every other player pays the owner.
       let collected = 0;
@@ -518,18 +549,33 @@ function applyFlowerPayment(
         if (j === ownerIndex) continue;
         players[j].stack = round(players[j].stack - rate);
         collected += rate;
+        events.push({
+          from: j,
+          to: ownerIndex,
+          amount: round(rate),
+          kind: "flower",
+          note: "正花",
+        });
       }
       players[ownerIndex].stack = round(players[ownerIndex].stack + collected);
     } else {
       // A non-owner holds the seat's pair — the seat owner alone pays them.
       players[ownerIndex].stack = round(players[ownerIndex].stack - rate);
       players[holderIndex].stack = round(players[holderIndex].stack + rate);
+      events.push({
+        from: ownerIndex,
+        to: holderIndex,
+        amount: round(rate),
+        kind: "flower",
+        note: "花咬",
+      });
     }
     const humanDelta =
       players[s.humanIndex].stack - s.players[s.humanIndex].stack;
     s = {
       ...s,
       players,
+      payEvents: [...s.payEvents, ...events],
       pnl: round(s.pnl + humanDelta),
       log: [...s.log, `${players[holderIndex].name} — seat flower pair.`],
     };
@@ -1080,6 +1126,7 @@ function computeWin(
     winningTile,
     selfDraw,
     robKong,
+    discarderIndex,
     tai,
     taiBreakdown: result0.breakdown,
     limit: result0.limit,
@@ -1186,6 +1233,7 @@ export function startNextHand(state: GameState): GameState {
     wall: dealt.wall,
     dealerIndex,
     roundWind,
+    payEvents: [],
     turnIndex: dealerIndex, // the dealer draws first
     phase: "await-draw",
     discardPile: [],
