@@ -214,14 +214,23 @@ export default function SetupPage() {
           <p className="mb-4 text-center text-[11px] tracking-[0.14em] text-[var(--text-muted)]">
             {ruleSummary}
           </p>
-          <Button
-            variant="gold"
-            fullWidth
-            onClick={dealMeIn}
-            className="py-4 text-base font-bold tracking-wide"
-          >
-            开始发牌 · DEAL ME IN
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="gold"
+              fullWidth
+              onClick={dealMeIn}
+              className="py-4 text-base font-bold tracking-wide"
+            >
+              开始发牌 · DEAL ME IN
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/practice")}
+              className="shrink-0 py-4 text-base font-bold tracking-wide"
+            >
+              练习 PRACTICE
+            </Button>
+          </div>
         </div>
       </div>
 

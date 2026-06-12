@@ -432,6 +432,22 @@ function safetyPhrase(tile: TileId, ctx: Ctx): SafetyNote | null {
 
 /* ---- Public API -------------------------------------------------------------- */
 
+/**
+ * Safety model on a frozen state, for practice mode: each tile's danger score
+ * (lower = safer) plus the coach's safety read when there is one.
+ */
+export function dangerScores(
+  state: GameState,
+  tiles: TileId[]
+): { tile: TileId; danger: number; note: string | null }[] {
+  const ctx = buildContext(state);
+  return tiles.map((tile) => ({
+    tile,
+    danger: dangerFor(tile, ctx),
+    note: safetyPhrase(tile, ctx)?.text ?? null,
+  }));
+}
+
 export function evaluateDiscardLocal(
   state: GameState,
   proposed: TileId
