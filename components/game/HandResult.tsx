@@ -135,19 +135,19 @@ export default function HandResult({
   const { result } = state;
   const human = state.players.find((p) => p.isHuman)!;
 
-  // Winning hand on a single row: scale tiles to the modal width (the modal
-  // is narrow, so allow smaller tiles than the in-play hand) and scroll
-  // rather than wrap if even that is not enough.
+  // Winning hand on a single row: scale tiles to the modal width (narrow, so
+  // allow smaller tiles than the in-play hand). The low floor keeps a full
+  // 14-tile concealed hand fully visible even in a 360px-wide modal.
   const winRow = useScaledTileRow(result?.handTiles.length ?? 0, {
-    min: 24,
+    min: 16,
     max: 32,
   });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="animate-pop-in w-full max-w-[440px] overflow-hidden rounded-3xl border border-[rgba(201,168,76,0.3)] bg-[var(--bg-surface)] shadow-2xl">
+      <div className="animate-pop-in flex max-h-[calc(100dvh-2rem)] w-full max-w-[440px] flex-col overflow-hidden rounded-3xl border border-[rgba(201,168,76,0.3)] bg-[var(--bg-surface)] shadow-2xl">
         {/* Header */}
-        <div className="border-b border-[rgba(255,255,255,0.07)] px-6 pb-4 pt-6 text-center">
+        <div className="shrink-0 border-b border-[rgba(255,255,255,0.07)] px-6 pb-4 pt-6 text-center">
           {result ? (
             <>
               <div className="font-display text-3xl font-black tracking-wide text-[var(--accent-gold)]">
@@ -171,6 +171,8 @@ export default function HandResult({
           )}
         </div>
 
+        {/* Scrollable body — everything between header and the pinned footer */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
         {result && (
           <div className="space-y-4 px-6 py-5">
             {/* Winning hand */}
@@ -316,9 +318,14 @@ export default function HandResult({
             </div>
           </div>
         )}
+        </div>
+        {/* End scrollable body */}
 
-        {/* Actions */}
-        <div className="flex gap-3 px-6 pb-6">
+        {/* Actions — pinned footer, always reachable regardless of scroll */}
+        <div
+          className="shrink-0 flex gap-3 border-t border-[rgba(255,255,255,0.07)] bg-[var(--bg-surface)] px-6 pt-3"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
+        >
           <Button variant="gold" fullWidth onClick={onNext} className="py-3.5">
             下一局 · NEXT HAND
           </Button>

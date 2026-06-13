@@ -40,11 +40,12 @@ export default function PlayerHand({
   }
   const sorted = sortTiles(concealed);
 
-  // ONE row, always: tiles scale to the container (min 34px, aspect 42:58)
-  // via --tile-w/--tile-h. The drawn tile stays inline behind a dashed
-  // divider (~17px extra). Below the minimum the row scrolls — never wraps.
+  // ONE row, always: tiles scale to the container (aspect 42:58) via
+  // --tile-w/--tile-h so all 14 tiles stay visible without scrolling. The
+  // drawn tile stays inline behind a dashed divider (~9px: ml-1 + pl-1 +
+  // 1px border), which we reserve via `extra` so the math never overflows.
   const count = sorted.length + (fresh ? 1 : 0) + (pendingBonus ? 1 : 0);
-  const extra = (fresh ? 17 : 0) + (pendingBonus ? 17 : 0);
+  const extra = (fresh ? 9 : 0) + (pendingBonus ? 9 : 0);
   const { ref, style } = useScaledTileRow(count, { extra });
 
   return (
@@ -69,7 +70,7 @@ export default function PlayerHand({
           />
         ))}
         {fresh && (
-          <div className="ml-2 flex shrink-0 animate-slide-in-right border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
+          <div className="ml-1 flex shrink-0 animate-slide-in-right border-l border-dashed border-[rgba(201,168,76,0.4)] pl-1">
             <TileComponent
               tileId={fresh}
               size="scaled"
@@ -80,7 +81,7 @@ export default function PlayerHand({
           </div>
         )}
         {pendingBonus && (
-          <div className="ml-2 flex shrink-0 animate-slide-in-right flex-col items-center border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
+          <div className="ml-1 flex shrink-0 animate-slide-in-right flex-col items-center border-l border-dashed border-[rgba(201,168,76,0.4)] pl-1">
             <TileComponent tileId={pendingBonus} size="scaled" recent />
             <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
               → 上桌 table
