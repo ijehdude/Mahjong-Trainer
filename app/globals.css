@@ -195,3 +195,12 @@ body {
 .animate-bubble-in {
   animation: bubble-in 150ms ease-out;
 }
+
+/* Hide horizontal scrollbars on single-row tile strips. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

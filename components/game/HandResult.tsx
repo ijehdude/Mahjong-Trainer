@@ -6,6 +6,7 @@ import { sortTiles, tileName } from "@/lib/mahjong/tiles";
 import Button from "@/components/shared/Button";
 import TileComponent from "./TileComponent";
 import MeldedSets from "./MeldedSets";
+import { useScaledTileRow } from "./useScaledTileRow";
 
 /* ===========================================================================
    Hand-result overlay shown when a hand ends (win or washout).
@@ -134,6 +135,14 @@ export default function HandResult({
   const { result } = state;
   const human = state.players.find((p) => p.isHuman)!;
 
+  // Winning hand on a single row: scale tiles to the modal width (the modal
+  // is narrow, so allow smaller tiles than the in-play hand) and scroll
+  // rather than wrap if even that is not enough.
+  const winRow = useScaledTileRow(result?.handTiles.length ?? 0, {
+    min: 24,
+    max: 32,
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="animate-pop-in w-full max-w-[440px] overflow-hidden rounded-3xl border border-[rgba(201,168,76,0.3)] bg-[var(--bg-surface)] shadow-2xl">
@@ -169,15 +178,20 @@ export default function HandResult({
               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                 胡牌 Winning hand
               </div>
-              <div className="flex flex-wrap items-center gap-1">
-                {sortTiles(result.handTiles).map((t, i) => (
-                  <TileComponent
-                    key={i}
-                    tileId={t}
-                    size="discard"
-                    recent={t === result.winningTile}
-                  />
-                ))}
+              <div ref={winRow.ref}>
+                <div
+                  className="scrollbar-hide flex flex-nowrap items-center gap-1 overflow-x-auto"
+                  style={winRow.style}
+                >
+                  {sortTiles(result.handTiles).map((t, i) => (
+                    <TileComponent
+                      key={i}
+                      tileId={t}
+                      size="scaled"
+                      recent={t === result.winningTile}
+                    />
+                  ))}
+                </div>
               </div>
               {result.handMelds.length > 0 && (
                 <div className="mt-1.5">

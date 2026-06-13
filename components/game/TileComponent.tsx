@@ -12,6 +12,7 @@ import TileFace from "./TileFace";
 export type TileSize =
   | "hand"
   | "handfit"
+  | "scaled"
   | "discard"
   | "pool"
   | "meld"
@@ -23,6 +24,9 @@ const SIZE: Record<TileSize, string> = {
   // The player's hand: shrinks on mobile so a full 14-tile hand fits one
   // screen (no horizontal scroll), full size on tablet/desktop.
   handfit: "w-6 h-9 rounded p-px md:w-12 md:h-16 md:rounded-lg md:p-1",
+  // Sized by the parent via --tile-w/--tile-h (see useScaledTileRow), so a
+  // full hand always fits one row.
+  scaled: "w-[var(--tile-w,42px)] h-[var(--tile-h,58px)] rounded-md p-0.5",
   discard: "w-8 h-11 rounded-md p-0.5",
   // Desktop central discard pile — sized so four rows of 24 fit the pile
   // area without clipping.

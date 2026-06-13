@@ -3,6 +3,7 @@
 import { sortTiles } from "@/lib/mahjong/tiles";
 import type { TileId } from "@/types/tiles";
 import TileComponent from "./TileComponent";
+import { useScaledTileRow } from "./useScaledTileRow";
 
 /* ===========================================================================
    The human player's hand — concealed tiles + the freshly drawn tile set apart.
@@ -39,31 +40,39 @@ export default function PlayerHand({
   }
   const sorted = sortTiles(concealed);
 
+  // ONE row, always: tiles scale to the container (min 34px, aspect 42:58)
+  // via --tile-w/--tile-h. The drawn tile stays inline behind a dashed
+  // divider (~17px extra). Below the minimum the row scrolls — never wraps.
+  const count = sorted.length + (fresh ? 1 : 0) + (pendingBonus ? 1 : 0);
+  const extra = (fresh ? 17 : 0) + (pendingBonus ? 17 : 0);
+  const { ref, style } = useScaledTileRow(count, { extra });
+
   return (
-    <div className="w-full">
+    <div className="w-full" ref={ref}>
       <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-wider text-[var(--text-muted)]">
         <span className="text-[var(--accent-gold)]">我的手牌 Your Hand</span>
         <span>·</span>
         <span>{seatLabel}</span>
       </div>
 
-      {/* Full hand on one screen: tiles shrink on mobile so all ~14 fit
-          without horizontal scrolling; wraps/full-size on wider screens. */}
-      <div className="flex flex-nowrap items-end gap-0.5 overflow-x-auto pb-1 md:flex-wrap md:gap-1">
+      <div
+        className="scrollbar-hide flex flex-nowrap items-end gap-1 overflow-x-auto pb-1"
+        style={style}
+      >
         {sorted.map((t, i) => (
           <TileComponent
             key={`${t}-${i}`}
             tileId={t}
-            size="handfit"
+            size="scaled"
             selected={selected === t}
             onClick={interactive ? () => onSelect(t) : undefined}
           />
         ))}
         {fresh && (
-          <div className="flex animate-slide-in-right md:ml-2 md:border-l md:border-dashed md:border-[rgba(201,168,76,0.4)] md:pl-2">
+          <div className="ml-2 flex shrink-0 animate-slide-in-right border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
             <TileComponent
               tileId={fresh}
-              size="handfit"
+              size="scaled"
               selected={selected === fresh}
               drawn={selected !== fresh}
               onClick={interactive ? () => onSelect(fresh!) : undefined}
@@ -71,8 +80,8 @@ export default function PlayerHand({
           </div>
         )}
         {pendingBonus && (
-          <div className="ml-2 flex animate-slide-in-right flex-col items-center border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
-            <TileComponent tileId={pendingBonus} size="hand" recent />
+          <div className="ml-2 flex shrink-0 animate-slide-in-right flex-col items-center border-l border-dashed border-[rgba(201,168,76,0.4)] pl-2">
+            <TileComponent tileId={pendingBonus} size="scaled" recent />
             <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">
               → 上桌 table
             </span>

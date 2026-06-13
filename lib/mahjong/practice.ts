@@ -1,8 +1,9 @@
 import type { GameState, Player } from "@/types/game";
 import type { Suit, TileId, Wind } from "@/types/tiles";
 import { DEFAULT_RULES, type GameRules } from "@/types/game";
-import { SUIT_NAME } from "@/types/tiles";
+import { FLOWERS, SEASONS, SUIT_NAME } from "@/types/tiles";
 import { buildDeck, shuffle } from "./deck";
+import { ORPHAN_TILES } from "./handValidator";
 import { ukeire } from "./shanten";
 import { dangerScores, evaluateDiscardLocal } from "./localStrategy";
 import { countTiles, isHonor, isSuit, rankOf, suitOf, tileName } from "./tiles";
@@ -100,6 +101,11 @@ function buildScenario(difficulty: Difficulty): GameState {
   }
 
   const humanIndex = rand(4);
+  // Occasionally deal the human a flower/season — this gives bonus tai and
+  // makes Chou Ping Hu (臭平胡) a genuinely viable strategy to reason about.
+  const bonusPool = shuffle([...FLOWERS, ...SEASONS]);
+  const humanFlowers =
+    Math.random() < 0.35 ? bonusPool.slice(0, 1 + rand(2)) : [];
   let botCounter = 0;
   const players: Player[] = [];
   for (let i = 0; i < 4; i++) {
@@ -113,7 +119,7 @@ function buildScenario(difficulty: Difficulty): GameState {
       hand: isHuman ? hand : deck.splice(0, 13),
       melds: [],
       discards: [],
-      flowers: [],
+      flowers: isHuman ? humanFlowers : [],
       stack: DEFAULT_RULES.startingStack,
     });
   }
@@ -234,87 +240,177 @@ function tryDiscardQuestion(
 
 interface StratEval {
   id: string;
-  label: string;
-  fit: number; // tiles of the 14 already serving the strategy
-  tai: number;
-  score: number;
+  cn: string; // Chinese name
+  en: string; // English name
+  tai: number; // house-rule tai value (for display + ranking)
+  fit: number; // tiles of the 14 already serving the strategy (0–14)
+  special: boolean; // 七对 / 十三幺 — only correct when the hand truly leans
+  viable: boolean; // can legally be the intended answer for THIS hand
+  rank: number; // distance-to-win weighted by tai (computed below)
 }
+
+const SUITS3: Suit[] = ["wan", "tong", "bam"];
 
 /** Greedy count of tiles participating in runs (×3) or run-partials (×2). */
 function sequenceFit(hand: TileId[]): number {
   let fit = 0;
-  for (const suit of ["wan", "tong", "bam"] as Suit[]) {
+  for (const suit of SUITS3) {
     const counts = new Array<number>(10).fill(0);
     for (const t of hand) if (suitOf(t) === suit) counts[rankOf(t)!]++;
-    for (let r = 1; r <= 7; r++) {
+    for (let r = 1; r <= 7; r++)
       while (counts[r] > 0 && counts[r + 1] > 0 && counts[r + 2] > 0) {
         counts[r]--; counts[r + 1]--; counts[r + 2]--;
         fit += 3;
       }
-    }
-    for (let r = 1; r <= 8; r++) {
+    for (let r = 1; r <= 8; r++)
       while (counts[r] > 0 && counts[r + 1] > 0) {
         counts[r]--; counts[r + 1]--;
         fit += 2;
       }
-    }
-    for (let r = 1; r <= 7; r++) {
+    for (let r = 1; r <= 7; r++)
       while (counts[r] > 0 && counts[r + 2] > 0) {
         counts[r]--; counts[r + 2]--;
         fit += 2;
       }
-    }
   }
   return fit;
 }
 
-function tryStrategyQuestion(
-  state: GameState,
-  stratMargin: number
-): PracticeQuestion | null {
-  const hand = state.players[state.humanIndex].hand;
+/** Tiles serving Thirteen Orphans: distinct terminal/honor types (+1 a pair). */
+function orphanFit(counts: Map<TileId, number>): number {
+  let distinct = 0;
+  let hasPair = false;
+  for (const t of ORPHAN_TILES) {
+    const c = counts.get(t) ?? 0;
+    if (c >= 1) distinct++;
+    if (c >= 2) hasPair = true;
+  }
+  return distinct + (hasPair ? 1 : 0);
+}
+
+/** Build the full strategy pool, each scored against the hand. */
+function evaluateStrategies(hand: TileId[], hasBonus: boolean): StratEval[] {
   const counts = countTiles(hand);
   const honors = hand.filter(isHonor).length;
+  const suitCount: Record<Suit, number> = { wan: 0, tong: 0, bam: 0 };
+  for (const t of hand) {
+    const s = suitOf(t);
+    if (s) suitCount[s]++;
+  }
 
   let pphFit = 0;
-  for (const c of counts.values()) if (c >= 2) pphFit += Math.min(c, 3);
+  for (const c of counts.values()) pphFit += c >= 2 ? Math.min(c, 3) : 0;
+  let pairs = 0;
+  for (const c of counts.values()) pairs += Math.floor(c / 2);
 
-  const suitFit = new Map<Suit, number>();
-  for (const s of ["wan", "tong", "bam"] as Suit[])
-    suitFit.set(s, hand.filter((t) => suitOf(t) === s).length);
-  const suitsByFit = [...suitFit.entries()].sort((a, b) => b[1] - a[1]);
+  const seqFit = sequenceFit(hand);
 
-  const evals: StratEval[] = [
-    { id: "pph", label: "对对胡 Pong Pong Hu (+2台)", fit: pphFit, tai: 2, score: 0 },
-    { id: "pinghu", label: "平胡 Ping Hu (+4台)", fit: sequenceFit(hand), tai: 4, score: 0 },
-    ...suitsByFit.slice(0, 2).map(([s, n]) => ({
-      id: `half-${s}`,
-      label: `混一色 Half flush (${SUIT_NAME[s]} + honors) (+2台)`,
-      fit: n + honors,
-      tai: 2,
-      score: 0,
-    })),
+  const pool: StratEval[] = [
+    // Ping Hu vs Chou Ping Hu are mutually exclusive: holding a bonus tile
+    // downgrades a sequence hand to Chou Ping Hu, so only one is "viable".
+    {
+      id: "pinghu", cn: "平胡", en: "Ping Hu", tai: 4,
+      fit: seqFit, special: false, viable: !hasBonus, rank: 0,
+    },
+    {
+      id: "choupinghu", cn: "臭平胡", en: "Chou Ping Hu", tai: 1,
+      fit: seqFit, special: false, viable: hasBonus, rank: 0,
+    },
+    {
+      id: "pph", cn: "对对胡", en: "Pong Pong Hu", tai: 2,
+      fit: pphFit, special: false, viable: true, rank: 0,
+    },
+    {
+      id: "sevenpairs", cn: "七对", en: "Seven Pairs", tai: 2,
+      fit: pairs * 2, special: true, viable: true, rank: 0,
+    },
+    {
+      id: "orphans", cn: "十三幺", en: "Thirteen Wonders", tai: 13,
+      fit: orphanFit(counts), special: true, viable: true, rank: 0,
+    },
   ];
-  // Distance-to-win weighted by projected tai: more fitting tiles = closer,
-  // and a tai edge breaks shape ties.
-  for (const e of evals) e.score = e.fit + e.tai;
-  evals.sort((a, b) => b.score - a.score);
+  for (const s of SUITS3) {
+    pool.push({
+      id: `half-${s}`, cn: "混一色",
+      en: `Half Flush (${SUIT_NAME[s]})`, tai: 2,
+      fit: suitCount[s] + honors, special: false, viable: true, rank: 0,
+    });
+    pool.push({
+      id: `full-${s}`, cn: "清一色",
+      en: `Full Flush (${SUIT_NAME[s]})`, tai: 4,
+      fit: suitCount[s], special: false, viable: true, rank: 0,
+    });
+  }
 
-  const [best, runner] = evals;
-  if (best.fit < 9) return null; // the hand must genuinely favour a direction
-  if (best.score - runner.score < stratMargin) return null;
+  // Distance-to-win dominates (more fitting tiles = closer); tai is a capped
+  // tiebreaker so a huge-tai longshot never outranks a much closer hand.
+  for (const e of pool) e.rank = e.fit * 2 + Math.min(e.tai, 5);
+  return pool;
+}
+
+function optionLabel(e: StratEval): string {
+  return `${e.cn} ${e.en} · ${e.tai}台`;
+}
+
+function tryStrategyQuestion(
+  state: GameState,
+  stratMargin: number,
+  difficulty: Difficulty
+): PracticeQuestion | null {
+  const human = state.players[state.humanIndex];
+  const hand = human.hand;
+  const hasBonus = human.flowers.length > 0;
+  const pool = evaluateStrategies(hand, hasBonus);
+
+  // Best legal answer = highest-ranked viable strategy.
+  const viable = pool.filter((e) => e.viable).sort((a, b) => b.rank - a.rank);
+  const best = viable[0];
+  const runner = viable[1];
+  if (!best || !runner) return null;
+
+  // The hand must genuinely favour a direction, and beat the runner-up clearly.
+  if (best.fit < 9) return null;
+  if (best.rank - runner.rank < stratMargin) return null;
+  // Special hands (七对 / 十三幺) may only be the ANSWER when the hand really
+  // leans that way; otherwise they stay distractors.
+  if (best.special && best.fit < 11) return null;
+
+  // Distractors: prefer plausible ones (share tiles with the hand). At Beginner
+  // an occasional absurd option (no overlap) is allowed for contrast.
+  const rest = pool.filter((e) => e.id !== best.id);
+  const plausible = shuffle(rest.filter((e) => e.fit >= 4));
+  const absurd = shuffle(rest.filter((e) => e.fit < 4));
+  const distractors: StratEval[] = [];
+  if (difficulty === "beginner" && absurd.length && Math.random() < 0.5)
+    distractors.push(absurd.shift()!);
+  for (const e of plausible) {
+    if (distractors.length >= 3) break;
+    distractors.push(e);
+  }
+  for (const e of [...absurd, ...plausible]) {
+    if (distractors.length >= 3) break;
+    if (!distractors.includes(e)) distractors.push(e);
+  }
+  if (distractors.length < 3) return null;
+
+  const options = shuffle(
+    [best, ...distractors.slice(0, 3)].map((e) => ({
+      id: e.id,
+      label: optionLabel(e),
+    }))
+  );
 
   const explanation =
-    `${best.label.split(" (")[0]} fits this hand best: ${best.fit} of your 14 tiles already serve it, ` +
-    `and it pays ${best.tai} tai. ${runner.label.split(" (")[0]} only fits ${runner.fit} tiles, so it is measurably slower for ${
-      runner.tai >= best.tai ? "similar" : "less"
-    } value. Count which tiles you would have to replace before committing to a shape.`;
+    `${best.cn} ${best.en} fits this hand best: ${best.fit} of your 14 tiles already serve it, ` +
+    `worth ${best.tai} tai. Next closest, ${runner.cn} ${runner.en}, fits only ${runner.fit} tiles` +
+    `${runner.tai > best.tai ? ` — higher value but measurably slower` : ""}. ` +
+    `Count which tiles you'd have to replace before committing to a shape.`;
 
   return {
     type: "strategy",
     prompt: "这手牌应该做什么牌型？Which strategy should you aim for?",
     state,
-    options: shuffle(evals.map(({ id, label }) => ({ id, label }))),
+    options,
     correct: [best.id],
     explanation,
   };
@@ -380,7 +476,7 @@ export function generatePracticeQuestion(
       const state = buildScenario(difficulty);
       const q =
         preferred === "strategy"
-          ? tryStrategyQuestion(state, m.strat * relax)
+          ? tryStrategyQuestion(state, m.strat * relax, difficulty)
           : preferred === "safety"
             ? trySafetyQuestion(state, m.danger * relax)
             : tryDiscardQuestion(state, Math.max(1, Math.round(m.live * relax)));
