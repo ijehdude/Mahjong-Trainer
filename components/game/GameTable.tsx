@@ -89,7 +89,7 @@ function DiscardCenter({ state }: { state: GameState }) {
   const lastIdx = pile.length - 1;
   if (pile.length === 0) {
     return (
-      <div className="flex h-11 items-center text-[10px] italic text-[var(--text-muted)]/50">
+      <div className="my-auto flex h-11 items-center text-[10px] italic text-[var(--text-muted)]/50">
         弃牌区 discards
       </div>
     );
@@ -97,7 +97,9 @@ function DiscardCenter({ state }: { state: GameState }) {
   return (
     // Desktop central pile: capped so 24 fit per row, sized so four rows
     // (96 tiles — more than a full game's discards) fit without clipping.
-    <div className="flex max-w-[672px] flex-wrap content-start justify-center gap-0.5">
+    // `my-auto` keeps the pile vertically centred as it grows, while staying
+    // scroll-safe (margins collapse so the top stays reachable on overflow).
+    <div className="my-auto flex max-w-[672px] flex-wrap content-start justify-center gap-0.5">
       {pile.map((d, i) => (
         <TileComponent
           key={i}
