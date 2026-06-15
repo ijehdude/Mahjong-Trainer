@@ -9,7 +9,7 @@ import Button from "@/components/shared/Button";
 import TileComponent from "@/components/game/TileComponent";
 import StrategyGuide from "@/components/game/StrategyGuide";
 import { DEFAULT_RULES } from "@/types/game";
-import type { CoachEngine, GameRules, MinTai, PlayerCount } from "@/types/game";
+import type { CoachEngine, GameRules, MinTai } from "@/types/game";
 import { RULES_STORAGE_KEY } from "@/lib/storage";
 
 export default function SetupPage() {
@@ -59,21 +59,6 @@ export default function SetupPage() {
         </header>
 
         <div className="mt-9 space-y-7">
-          <SettingsCard title="玩家人数" en="Players">
-            <SegmentedControl<PlayerCount>
-              options={[
-                { label: "2人", value: 2 },
-                { label: "3人", value: 3 },
-                { label: "4人", value: 4 },
-              ]}
-              value={rules.players}
-              onChange={(v) => update("players", v)}
-            />
-            <p className="text-xs text-[var(--text-muted)]">
-              新加坡规则以 4 人为标准；3 人去掉北风。
-            </p>
-          </SettingsCard>
-
           <SettingsCard
             title="最低台数"
             en="Minimum Tai"
