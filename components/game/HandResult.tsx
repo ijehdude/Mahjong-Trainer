@@ -3,6 +3,7 @@
 import type { GameState, PayEvent } from "@/types/game";
 import type { Verdict } from "@/lib/claude/strategyFeedback";
 import { sortTiles, tileName } from "@/lib/mahjong/tiles";
+import { decomposeWin, type SetGroup } from "@/lib/mahjong/handValidator";
 import Button from "@/components/shared/Button";
 import TileComponent from "./TileComponent";
 import MeldedSets from "./MeldedSets";
@@ -126,6 +127,87 @@ function PaymentBreakdown({ state }: { state: GameState }) {
   );
 }
 
+/**
+ * Winning hand laid out as discrete melds (sequences/triplets + the pair) at one
+ * consistent tile size. Each meld is kept intact and the flex container wraps
+ * whole melds onto the next row as width requires — so a meld shifts down as a
+ * unit rather than tiles being split or rendered at mismatched sizes. Special
+ * hands that don't decompose into 4 sets + a pair (thirteen orphans, seven
+ * pairs, fei-wildcard edge cases) fall back to a single scaled row + melds.
+ */
+function WinningHand({
+  result,
+  winRow,
+}: {
+  result: NonNullable<GameState["result"]>;
+  winRow: ReturnType<typeof useScaledTileRow>;
+}) {
+  const decomp = decomposeWin(result.handTiles, result.handMelds);
+
+  if (!decomp) {
+    return (
+      <>
+        <div ref={winRow.ref}>
+          <div
+            className="scrollbar-hide flex flex-nowrap items-center gap-1 overflow-x-auto"
+            style={winRow.style}
+          >
+            {sortTiles(result.handTiles).map((t, i) => (
+              <TileComponent
+                key={i}
+                tileId={t}
+                size="scaled"
+                recent={t === result.winningTile}
+              />
+            ))}
+          </div>
+        </div>
+        {result.handMelds.length > 0 && (
+          <div className="mt-1.5">
+            <MeldedSets
+              melds={result.handMelds}
+              size="discard"
+              revealConcealed
+            />
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const groups: SetGroup[] = [
+    ...decomp.sets,
+    { type: "pair", tiles: [decomp.pair, decomp.pair], concealed: true },
+  ];
+
+  // Highlight only the first occurrence of the winning tile (it sits among the
+  // concealed sets, which come before any declared melds in the group list).
+  let winShown = false;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {groups.map((g, gi) => (
+        <div
+          key={gi}
+          className="flex items-center gap-px rounded-md bg-[rgba(0,0,0,0.18)] p-0.5"
+        >
+          {g.tiles.map((t, ti) => {
+            const recent = !winShown && t === result.winningTile;
+            if (recent) winShown = true;
+            return (
+              <TileComponent
+                key={ti}
+                tileId={t}
+                size="discard"
+                recent={recent}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HandResult({
   state,
   lastDiscard,
@@ -180,26 +262,7 @@ export default function HandResult({
               <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                 胡牌 Winning hand
               </div>
-              <div ref={winRow.ref}>
-                <div
-                  className="scrollbar-hide flex flex-nowrap items-center gap-1 overflow-x-auto"
-                  style={winRow.style}
-                >
-                  {sortTiles(result.handTiles).map((t, i) => (
-                    <TileComponent
-                      key={i}
-                      tileId={t}
-                      size="scaled"
-                      recent={t === result.winningTile}
-                    />
-                  ))}
-                </div>
-              </div>
-              {result.handMelds.length > 0 && (
-                <div className="mt-1.5">
-                  <MeldedSets melds={result.handMelds} size="discard" revealConcealed />
-                </div>
-              )}
+              <WinningHand result={result} winRow={winRow} />
               {result.handFlowers.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-1">
                   <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent-gold)]">
