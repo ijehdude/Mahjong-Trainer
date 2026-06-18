@@ -313,7 +313,7 @@ export default function SeatCeremony({ rules, onSeated }: Props) {
                 disabled={!clickable}
                 className={`flex flex-col items-center gap-1 rounded-xl p-1 transition-transform ${
                   clickable
-                    ? "-translate-y-1 cursor-pointer animate-pulse"
+                    ? "-translate-y-1 cursor-pointer animate-selectable"
                     : "cursor-default"
                 } ${taker !== null && !revealed ? "opacity-70" : ""}`}
               >
