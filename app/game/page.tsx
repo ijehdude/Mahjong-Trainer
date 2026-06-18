@@ -54,7 +54,6 @@ export default function GamePage() {
     verdict: Verdict | null;
     text: string;
   } | null>(null);
-  const [taiHint, setTaiHint] = useState(true);
   // Show the dice-roll seat ceremony before each new game.
   const [ceremony, setCeremony] = useState(true);
   // The result overlay is held back briefly so the 胡！/自摸！ bubble reads.
@@ -345,8 +344,6 @@ export default function GamePage() {
         roundWind={state.roundWind}
         seatWind={human.seatWind}
         handNumber={state.handNumber}
-        taiHint={taiHint}
-        onToggleTaiHint={() => setTaiHint((t) => !t)}
         onHome={handleHome}
         onRestart={handleRestart}
       />
