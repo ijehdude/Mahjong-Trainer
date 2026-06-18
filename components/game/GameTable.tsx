@@ -15,9 +15,10 @@ import TileComponent from "./TileComponent";
 
 interface Props {
   state: GameState;
+  showTai: boolean;
 }
 
-export default function GameTable({ state }: Props) {
+export default function GameTable({ state, showTai }: Props) {
   const dealer = state.players[state.dealerIndex];
 
   const seatView = (seat: RelativeSeat) => {
@@ -49,13 +50,13 @@ export default function GameTable({ state }: Props) {
 
       {/* Across (top) */}
       <div className="mt-2 flex justify-center">
-        <PlayerInfo view={across} align="center" bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={across} align="center" showTai={showTai} bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Middle row: left player | central discard pile | right player,
           all vertically centred — discards sit in the middle of the table. */}
       <div className="mt-2 flex min-h-0 flex-1 items-center gap-2">
-        <PlayerInfo view={left} vertical side="left" bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={left} vertical side="left" showTai={showTai} bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
 
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1 self-stretch justify-center">
           {/* Wall count */}
@@ -73,12 +74,12 @@ export default function GameTable({ state }: Props) {
           </div>
         </div>
 
-        <PlayerInfo view={right} vertical side="right" bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={right} vertical side="right" showTai={showTai} bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
 
       {/* Self (bottom) — stack already shown in the header, so hide it here. */}
       <div className="mt-2 flex justify-center">
-        <PlayerInfo view={self} align="center" hideCount hideStack ghostConcealed bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
+        <PlayerInfo view={self} align="center" hideCount hideStack ghostConcealed showTai={showTai} bubbles={state.bubbles} rules={state.rules} roundWind={state.roundWind} payAnim={state.payAnim} />
       </div>
     </div>
   );
@@ -124,6 +125,7 @@ function PlayerInfo({
   hideCount = false,
   hideStack = false,
   ghostConcealed = false,
+  showTai = true,
   side,
   bubbles,
   rules,
@@ -138,6 +140,7 @@ function PlayerInfo({
   } | null;
   align?: "start" | "center";
   vertical?: boolean;
+  showTai?: boolean;
   hideCount?: boolean;
   hideStack?: boolean;
   ghostConcealed?: boolean;
@@ -199,7 +202,7 @@ function PlayerInfo({
             庄
           </span>
         )}
-        {tai > 0 && (
+        {showTai && tai > 0 && (
           <span className="rounded bg-[rgba(201,168,76,0.2)] px-1 py-0.5 text-[9px] font-bold text-[var(--accent-gold)]">
             +{tai}台
           </span>

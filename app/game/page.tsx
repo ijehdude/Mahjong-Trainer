@@ -54,6 +54,7 @@ export default function GamePage() {
     verdict: Verdict | null;
     text: string;
   } | null>(null);
+  const [taiHint, setTaiHint] = useState(true);
   // Show the dice-roll seat ceremony before each new game.
   const [ceremony, setCeremony] = useState(true);
   // The result overlay is held back briefly so the 胡！/自摸！ bubble reads.
@@ -226,16 +227,6 @@ export default function GamePage() {
     setState(startNextHand(state));
   };
 
-  const handleRestart = () => {
-    // New game → re-roll for seats via the ceremony.
-    abortRef.current?.abort();
-    setLastDiscardFeedback(null);
-    setSelected(null);
-    setFeedback(EMPTY_FEEDBACK);
-    setState(null);
-    setCeremony(true);
-  };
-
   const handleHome = () => router.push("/");
 
   // ---- Bottom area state ------------------------------------------------
@@ -344,14 +335,15 @@ export default function GamePage() {
         roundWind={state.roundWind}
         seatWind={human.seatWind}
         handNumber={state.handNumber}
+        taiHint={taiHint}
+        onToggleTaiHint={() => setTaiHint((t) => !t)}
         onHome={handleHome}
-        onRestart={handleRestart}
       />
 
       {/* ===== Desktop / tablet (≥768px): overhead table + bottom dock ===== */}
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">
-          <GameTable state={state} />
+          <GameTable state={state} showTai={taiHint} />
         </div>
         <div className="border-t border-[rgba(255,255,255,0.06)] bg-[rgba(15,30,23,0.96)] px-3 pb-4 pt-3 backdrop-blur-md">
           {strategyBlock && <div className="mb-3">{strategyBlock}</div>}
@@ -366,11 +358,11 @@ export default function GamePage() {
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
         {/* Felt zone */}
         <div className="flex min-h-0 flex-1 px-2 pt-2">
-          <MobileFelt state={state} />
+          <MobileFelt state={state} showTai={taiHint} />
         </div>
 
         {/* Bonus bar */}
-        <BonusBar flowers={human.flowers} tai={bonusTai} />
+        <BonusBar flowers={human.flowers} tai={bonusTai} showTai={taiHint} />
 
         {/* Divider */}
         <div className="mx-3 border-t border-[rgba(255,255,255,0.08)]" />

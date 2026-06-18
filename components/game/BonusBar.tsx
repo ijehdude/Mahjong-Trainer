@@ -12,9 +12,10 @@ import TileComponent from "./TileComponent";
 interface Props {
   flowers: TileId[];
   tai: number;
+  showTai: boolean;
 }
 
-export default function BonusBar({ flowers, tai }: Props) {
+export default function BonusBar({ flowers, tai, showTai }: Props) {
   return (
     <div className="flex items-center gap-2 overflow-x-auto px-3 py-1.5">
       <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
@@ -36,7 +37,7 @@ export default function BonusBar({ flowers, tai }: Props) {
           ))}
         </div>
       )}
-      {tai > 0 && (
+      {showTai && tai > 0 && (
         <span className="ml-auto shrink-0 rounded-md bg-[rgba(201,168,76,0.2)] px-2 py-0.5 text-[11px] font-bold text-[var(--accent-gold)]">
           +{tai} 台
         </span>

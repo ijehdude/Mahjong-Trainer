@@ -16,8 +16,9 @@ interface Props {
   roundWind: Wind;
   seatWind: Wind;
   handNumber: number;
+  taiHint: boolean;
+  onToggleTaiHint: () => void;
   onHome: () => void;
-  onRestart: () => void;
 }
 
 function money(n: number): string {
@@ -34,8 +35,9 @@ export default function ScoreHeader({
   roundWind,
   seatWind,
   handNumber,
+  taiHint,
+  onToggleTaiHint,
   onHome,
-  onRestart,
 }: Props) {
   const pct = total === 0 ? 100 : Math.round((correct / total) * 100);
   const pnlColor =
@@ -75,10 +77,14 @@ export default function ScoreHeader({
           门风 {WIND_NAME[seatWind]}
         </span>
         <button
-          onClick={onRestart}
-          className="ml-auto rounded-lg border border-[rgba(192,57,43,0.5)] bg-[rgba(192,57,43,0.15)] px-2.5 py-1 font-semibold text-[#e8a59d] hover:bg-[rgba(192,57,43,0.3)]"
+          onClick={onToggleTaiHint}
+          className={`ml-auto rounded-lg border px-2.5 py-1 font-semibold transition-colors ${
+            taiHint
+              ? "border-[var(--accent-gold)] text-[var(--accent-gold)]"
+              : "border-[rgba(255,255,255,0.1)] text-[var(--text-muted)]"
+          }`}
         >
-          ↺
+          💡 台数提示 {taiHint ? "ON" : "OFF"}
         </button>
       </div>
     </header>

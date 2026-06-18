@@ -21,6 +21,7 @@ import TileComponent from "./TileComponent";
 
 interface Props {
   state: GameState;
+  showTai: boolean;
 }
 
 interface SeatInfo {
@@ -30,7 +31,7 @@ interface SeatInfo {
   tai: number;
 }
 
-export default function MobileFelt({ state }: Props) {
+export default function MobileFelt({ state, showTai }: Props) {
   const seatView = (seat: RelativeSeat): SeatInfo | null => {
     const idx = indexForSeat(state, seat);
     if (idx === null) return null;
@@ -86,12 +87,12 @@ export default function MobileFelt({ state }: Props) {
       />
       <div className="grid h-full w-full grid-cols-[58px_1fr_58px] gap-1">
         {/* Left side player */}
-        <SideInfo view={left} side="left" />
+        <SideInfo view={left} side="left" showTai={showTai} />
 
         {/* Centre: across info + one combined discard pile */}
         <div className="flex min-h-0 flex-col gap-1">
           <div className="flex shrink-0 flex-col items-center gap-0.5">
-            <SeatTag view={across} />
+            <SeatTag view={across} showTai={showTai} />
             {across && across.player.melds.length > 0 && (
               <MeldedSets melds={across.player.melds} size="mini" />
             )}
@@ -129,14 +130,20 @@ export default function MobileFelt({ state }: Props) {
         </div>
 
         {/* Right side player */}
-        <SideInfo view={right} side="right" />
+        <SideInfo view={right} side="right" showTai={showTai} />
       </div>
     </div>
   );
 }
 
 /** A small name/tai tag for the across seat above the discard pile. */
-function SeatTag({ view }: { view: SeatInfo | null }) {
+function SeatTag({
+  view,
+  showTai,
+}: {
+  view: SeatInfo | null;
+  showTai: boolean;
+}) {
   if (!view) return <div className="h-3" />;
   const { player, isDealer, isCurrent, tai } = view;
   return (
@@ -155,7 +162,7 @@ function SeatTag({ view }: { view: SeatInfo | null }) {
           庄
         </span>
       )}
-      {tai > 0 && (
+      {showTai && tai > 0 && (
         <span className="rounded bg-[rgba(201,168,76,0.2)] px-1 text-[8px] font-bold text-[var(--accent-gold)]">
           +{tai}台
         </span>
@@ -171,9 +178,11 @@ function SeatTag({ view }: { view: SeatInfo | null }) {
 function SideInfo({
   view,
   side,
+  showTai,
 }: {
   view: SeatInfo | null;
   side: "left" | "right";
+  showTai: boolean;
 }) {
   if (!view) return <div />;
   const { player, isDealer, isCurrent, tai } = view;
@@ -199,7 +208,7 @@ function SideInfo({
             庄
           </span>
         )}
-        {tai > 0 && (
+        {showTai && tai > 0 && (
           <span className="rounded bg-[rgba(201,168,76,0.2)] px-1 text-[8px] font-bold text-[var(--accent-gold)]">
             +{tai}台
           </span>
