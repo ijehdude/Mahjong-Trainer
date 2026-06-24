@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Serif_SC, Noto_Sans_SC, DM_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const notoSerifSC = Noto_Serif_SC({
@@ -46,7 +47,10 @@ export default function RootLayout({
       lang="en"
       className={`${notoSerifSC.variable} ${notoSansSC.variable} ${dmSans.variable} h-full`}
     >
-      <body className="min-h-full font-body">{children}</body>
+      <body className="min-h-full font-body">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
